@@ -1,32 +1,38 @@
 # 🛵 Food Delivery Aggregator (Mini-DoorDash) - Group G4
 
-> **Môn học:** INT1313 - Cơ sở dữ liệu (Database Systems)  
-> **Học kỳ:** Học kỳ 1 (2026 - 2027)  
-> **Trường:** Học viện Công nghệ Bưu chính Viễn thông CS2 (PTIT HCM)
+> **Course:** INT1313 - Database Systems
+> **Semester:** Semester 1 (2026 - 2027)
+> **University:** Posts and Telecommunications Institute of Technology - Campus 2 (PTIT HCM)
 
 ---
 
-## 👥 Thành viên nhóm (Team Members)
+## 👥 Team Members
 
-| STT | Họ và tên | Mã sinh viên / Email |
-| :---: | :--- | :--- |
-| 1 | **Trần Thanh Nhuận** | `n24dece085@student.ptithcm.edu.vn` |
-| 2 | **Trần Hoàng Nguyên** | `n24dece084@student.ptithcm.edu.vn` |
-| 3 | **Thái Tuấn Vũ** | `n24dece104@student.ptithcm.edu.vn` |
+| No. | Full Name             | Student ID / Email                  |
+| :-: | :-------------------- | :---------------------------------- |
+|  1  | **Trần Thanh Nhuận**  | `n24dece085@student.ptithcm.edu.vn` |
+|  2  | **Trần Hoàng Nguyên** | `n24dece084@student.ptithcm.edu.vn` |
+|  3  | **Thái Tuấn Vũ**      | `n24dece104@student.ptithcm.edu.vn` |
 
 ---
 
-## 📌 Sơ lược về đồ án (Project Overview)
+## 📌 Project Overview
 
-### 1. Mục tiêu bài toán
-Đồ án xây dựng và thiết kế hệ thống **Cơ sở dữ liệu quan hệ** cho mô hình ứng dụng đặt và giao đồ ăn trực tuyến (**Food Delivery Aggregator**). Hệ thống giải quyết bài toán kết nối ba đối tượng chính: **Khách hàng (Customer)**, **Đối tác nhà hàng (Restaurant)** và **Đối tác tài xế (Driver)** trên cùng một nền tảng.
+### 1. Project Objectives
 
-### 2. Các điểm trọng tâm của cơ sở dữ liệu
-* **Mô hình EER Mở rộng:** Áp dụng mối quan hệ chuyên biệt hóa/tổng quát hóa (IS-A Hierarchy) với bảng trung tâm `User` và các bảng con `Customer`, `Restaurant`, `Driver`.
-* **Quản lý vòng đời đơn hàng:** Lưu vết và duy trì tính toàn vẹn dữ liệu xuyên suốt các trạng thái đơn hàng (từ khi tạo đơn, chuẩn bị món, lấy hàng đến khi hoàn tất giao hàng).
-* **Phân vùng vận hành (Hub & Shift):** Quản lý tài xế và nhà hàng theo từng trạm/khu vực vận hành (`Hub`), đồng thời theo dõi ca làm việc (`Shift`) và doanh thu/tiền thưởng của tài xế.
-* **Tính năng phụ trợ:** Tích hợp các phân hệ Giỏ hàng (`Cart`), Khuyến mãi (`Coupon`), Lịch sử thay đổi đơn hàng (`AuditLog`), Đánh giá (`Review`), Thanh toán (`Payment`) và Thông báo (`Notification`).
+This project aims to design and develop a **relational database system** for an online **Food Delivery Aggregator** application, similar to a mini-DoorDash. The system addresses the need to connect three main participants on a single platform: **Customers**, **Restaurant Partners**, and **Driver Partners**.
 
-### 3. Công nghệ & Công cụ
-* **Hệ quản trị CSDL:** MySQL
-* **Phương pháp thiết kế:** Extended Entity-Relationship (EER) Modeling & Normalization
+### 2. Key Database Components
+
+* **Extended EER Model:** Apply **specialization/generalization relationships (IS-A Hierarchy)** with the central `User` entity and its subclasses: `Customer`, `Restaurant`, and `Driver`.
+
+* **Order Lifecycle Management:** Track and maintain **data integrity throughout the entire order lifecycle**, from order creation and food preparation to pickup and successful delivery.
+
+* **Operational Management (Hub & Shift):** Manage drivers and restaurants based on specific **operational hubs/areas (`Hub`)**, while tracking **work shifts (`Shift`)**, driver earnings, and driver bonuses.
+
+* **Supporting Features:** Integrate supporting modules including **Shopping Cart (`Cart`)**, **Promotions (`Coupon`)**, **Order Change History (`AuditLog`)**, **Reviews (`Review`)**, **Payments (`Payment`)**, and **Notifications (`Notification`)**.
+
+### 3. Technologies & Tools
+
+* **Database Management System (DBMS):** MySQL
+* **Design Methodology:** Extended Entity-Relationship (EER) Modeling & Database Normalization
