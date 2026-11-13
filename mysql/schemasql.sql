@@ -130,7 +130,7 @@ CREATE TABLE `order` (
     driver_id INT NULL, -- Mã tài xế được phân công, NULL nếu chưa có tài xế
     order_date DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời điểm tạo đơn hàng, mặc định là hiện tại
     total_amount DECIMAL(10,2) NOT NULL, -- Tổng giá trị đơn hàng
-    status ENUM('PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'PICKED UP', 'DELIVERING', 'COMPLETED', 'CANCELLED') NULL DEFAULT 'PENDING', -- Trạng thái đơn hàng trong quy trình xử lý
+    status ENUM('PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'PICKED_UP', 'DELIVERING', 'COMPLETED', 'CANCELLED') NULL DEFAULT 'PENDING', -- Trạng thái đơn hàng trong quy trình xử lý
     delivery_fee DECIMAL(10,2) NULL, -- Phí giao hàng
     payment_method VARCHAR(50) NULL, -- Phương thức thanh toán được lựa chọn
     delivery_address_snapshot TEXT NULL, -- Lưu bản sao địa chỉ giao hàng tại thời điểm đặt đơn để bảo toàn lịch sử
