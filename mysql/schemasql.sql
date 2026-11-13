@@ -29,7 +29,7 @@ CREATE TABLE customer (
     loyalty_points INT NULL DEFAULT 0, -- Điểm thưởng tích lũy, mặc định bằng 0
     total_orders INT NULL DEFAULT 0, -- Tổng số đơn hàng của khách, mặc định bằng 0
     preferred_payment VARCHAR(50) NULL, -- Phương thức thanh toán ưa thích, không bắt buộc
-    FOREIGN KEY (user_id) REFERENCES user(user_id) -- Liên kết với tài khoản trong bảng user
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE -- Liên kết với tài khoản trong bảng user
 );
 
 -- Bảng restaurant: Subclass, lưu thông tin riêng của nhà hàng
@@ -44,7 +44,7 @@ CREATE TABLE restaurant (
     is_approved TINYINT(1) NOT NULL DEFAULT 0, -- Trạng thái phê duyệt: 0 chưa duyệt, 1 đã duyệt
     is_open TINYINT(1) NOT NULL DEFAULT 0, -- Trạng thái hoạt động: 0 đóng cửa, 1 đang mở
     min_order_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00, -- Giá trị đơn hàng tối thiểu
-    FOREIGN KEY (user_id) REFERENCES user(user_id), -- Liên kết với tài khoản chủ nhà hàng
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE, -- Liên kết với tài khoản chủ nhà hàng
     FOREIGN KEY (hub_id) REFERENCES hub(hub_id) -- Liên kết với trung tâm điều phối
 );
 
@@ -58,7 +58,7 @@ CREATE TABLE driver (
     current_location VARCHAR(255) NULL, -- Vị trí hiện tại của tài xế
     status ENUM('ONLINE', 'OFFLINE', 'BUSY') NULL DEFAULT 'OFFLINE', -- Trạng thái tài xế: trực tuyến, ngoại tuyến hoặc đang giao hàng
     hub_id INT NULL, -- Mã trung tâm điều phối mà tài xế trực thuộc
-    FOREIGN KEY (user_id) REFERENCES user(user_id), -- Liên kết với tài khoản người dùng
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE, -- Liên kết với tài khoản người dùng
     FOREIGN KEY (hub_id) REFERENCES hub(hub_id) -- Liên kết với trung tâm điều phối
 );
 
