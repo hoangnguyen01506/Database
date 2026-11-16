@@ -16,10 +16,6 @@
 
 ---
 
-## 📐 Database Design (DDD)
-
-**Database Documentation:** [View Database Schema on dbdocs.io](https://dbdocs.io/17-thanh-nhuan/test)
-
 ---
 
 ## 📌 Project Overview
