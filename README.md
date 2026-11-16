@@ -36,7 +36,7 @@ This project aims to design and develop a **relational database system** for an 
 
 - **Operational Management (Hub & Shift):** Manage drivers and restaurants based on specific **operational hubs/areas (`Hub`)**, while tracking **work shifts (`Shift`)**, driver earnings, and driver bonuses.
 
-- **Supporting Features:** Integrate supporting modules including **Shopping Cart (`Cart`)**, **Promotions (`Coupon`)**, **Order Change History (`AuditLog`)**, **Reviews (`Review`)**, **Payments (`Payment`)**, and **Notifications (`Notification`)**.
+- **Supporting Database Modules:** Track **Order Change History (`AuditLog`)**, **Reviews (`Review`)**, **Payments (`Payment`)**, and **Notifications (`Notification`)**. The API has a session-only cart; persistent carts and promotions/coupons are outside the current database/API scope.
 
 ### 3. Technologies & Tools
 

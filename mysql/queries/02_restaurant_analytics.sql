@@ -15,13 +15,12 @@ ORDER BY completed_gmv DESC;
 -- Restaurants with average completed-order value above the platform average.
 SELECT
     r.restaurant_id,
-    u.name AS restaurant_name,
+    r.restaurant_name,
     ROUND(AVG(o.total_amount), 2) AS average_order_value
 FROM restaurant AS r
-JOIN `user` AS u ON u.user_id = r.user_id
 JOIN `order` AS o ON o.restaurant_id = r.restaurant_id
 WHERE o.status = 'COMPLETED'
-GROUP BY r.restaurant_id, u.name
+GROUP BY r.restaurant_id, r.restaurant_name
 HAVING AVG(o.total_amount) > (
     SELECT AVG(total_amount)
     FROM `order`
@@ -31,13 +30,12 @@ HAVING AVG(o.total_amount) > (
 -- Restaurant review summary.
 SELECT
     r.restaurant_id,
-    u.name AS restaurant_name,
+    r.restaurant_name,
     COUNT(rv.review_id) AS review_count,
     ROUND(AVG(rv.rating), 2) AS average_rating
 FROM restaurant AS r
-JOIN `user` AS u ON u.user_id = r.user_id
 LEFT JOIN `order` AS o ON o.restaurant_id = r.restaurant_id
 LEFT JOIN review AS rv
     ON rv.order_id = o.order_id AND rv.target_type = 'Restaurant'
-GROUP BY r.restaurant_id, u.name
+GROUP BY r.restaurant_id, r.restaurant_name
 ORDER BY average_rating DESC;

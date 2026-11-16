@@ -1,3 +1,5 @@
+"""Route đăng nhập: xác thực tài khoản và tạo phiên ứng dụng."""
+
 import secrets
 from http import HTTPStatus
 
@@ -6,7 +8,10 @@ from sessions import create as create_session
 
 
 class AuthRoutes:
+    """Xử lý các thao tác xác thực người dùng."""
+
     def login(self):
+        """Kiểm tra email/mật khẩu rồi trả token cùng thông tin role."""
         payload = self.read_json()
         email = payload.get("email", "")
         password = payload.get("password", "")

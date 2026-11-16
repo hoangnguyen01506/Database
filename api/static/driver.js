@@ -1,3 +1,4 @@
+// Giao diện tài xế: trạng thái trực tuyến, đơn khả dụng và tiến độ giao.
 import { byId, escapeHtml, request, state, toast } from "./shared.js";
 import { renderOrders } from "./orders.js";
 

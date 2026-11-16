@@ -1,3 +1,5 @@
+"""Route đơn hàng: checkout, lọc quyền xem và xử lý giao hàng."""
+
 from http import HTTPStatus
 
 from database import connect
@@ -5,7 +7,10 @@ from errors import APIError
 
 
 class OrderRoutes:
+    """Quản lý vòng đời đơn hàng theo role khách, nhà hàng và tài xế."""
+
     def place_order(self):
+        """Tạo đơn cùng các dòng món trong một giao dịch MySQL."""
         session = self.current_session("Customer")
         if not session["cart"]:
             raise APIError(HTTPStatus.CONFLICT, "Add at least one available menu item before checkout")
@@ -15,7 +20,7 @@ class OrderRoutes:
             connection.start_transaction()
             cursor.execute("SET @app_user_id = %s", (session["user_id"],))
             cursor.execute(
-                "SELECT customer_id FROM customer WHERE user_id = %s FOR UPDATE",
+                "SELECT customer_id FROM customer WHERE user_id = %s FOR SHARE",
                 (session["user_id"],),
             )
             customer = cursor.fetchone()
@@ -23,7 +28,8 @@ class OrderRoutes:
                 raise APIError(HTTPStatus.FORBIDDEN, "This account has no customer profile")
             cursor.execute(
                 "SELECT address_line, ward, district, city FROM address "
-                "WHERE user_id = %s AND is_default = 1 ORDER BY address_id LIMIT 1",
+                "WHERE user_id = %s AND is_default = 1 "
+                "ORDER BY address_line, ward, district, city LIMIT 1",
                 (session["user_id"],),
             )
             address = cursor.fetchone()
@@ -40,7 +46,7 @@ class OrderRoutes:
             restaurant_id = session["cart_restaurant_id"]
             cursor.execute(
                 "SELECT restaurant_id FROM restaurant "
-                "WHERE restaurant_id = %s AND is_approved = 1 AND is_open = 1 FOR UPDATE",
+                "WHERE restaurant_id = %s AND is_approved = 1 AND is_open = 1 FOR SHARE",
                 (restaurant_id,),
             )
             if cursor.fetchone() is None:
@@ -56,7 +62,7 @@ class OrderRoutes:
             for menu_item_id, quantity in session["cart"].items():
                 cursor.execute(
                     "SELECT mi.menu_item_id, mi.is_available, mi.restaurant_id "
-                    "FROM menu_item AS mi WHERE mi.menu_item_id = %s FOR UPDATE",
+                    "FROM menu_item AS mi WHERE mi.menu_item_id = %s FOR SHARE",
                     (menu_item_id,),
                 )
                 item = cursor.fetchone()
@@ -85,6 +91,7 @@ class OrderRoutes:
         self.send_json(HTTPStatus.CREATED, {"message": "Order created", "order": created_order})
 
     def list_orders(self):
+        """Liệt kê các đơn mà role hiện tại được phép xem."""
         session = self.current_session()
         if session["role"] == "Customer":
             sql = (
@@ -125,6 +132,7 @@ class OrderRoutes:
         self.send_json(HTTPStatus.OK, {"orders": rows})
 
     def get_order(self, order_id):
+        """Lấy chi tiết đơn sau khi kiểm tra quyền sở hữu."""
         session = self.current_session()
         order = self.query_one(
             "SELECT o.order_id, o.order_date, o.status, o.total_amount, o.delivery_fee, "
@@ -145,6 +153,7 @@ class OrderRoutes:
         self.send_json(HTTPStatus.OK, {"order": order})
 
     def can_view_order(self, session, order):
+        """Kiểm tra user có quyền xem đơn theo role và quan hệ sở hữu."""
         if session["role"] == "Admin":
             return True
         if session["role"] == "Customer":
@@ -168,6 +177,7 @@ class OrderRoutes:
         return False
 
     def change_order(self, order_id, action):
+        """Chuyển thao tác trạng thái đến route nhà hàng hoặc tài xế."""
         session = self.current_session()
         if action in ("confirm", "prepare", "ready"):
             self.restaurant_order_action(session, order_id, action)
@@ -177,6 +187,7 @@ class OrderRoutes:
             self.driver_complete_order(session, order_id)
 
     def restaurant_order_action(self, session, order_id, action):
+        """Xác nhận và cập nhật các bước chuẩn bị của nhà hàng."""
         if session["role"] != "Restaurant":
             raise APIError(HTTPStatus.FORBIDDEN, "Only restaurant accounts can change preparation status")
         transitions = {
@@ -191,13 +202,18 @@ class OrderRoutes:
             connection.start_transaction()
             cursor.execute("SET @app_user_id = %s", (session["user_id"],))
             cursor.execute(
-                "SELECT o.status, r.restaurant_id FROM `order` AS o "
-                "JOIN restaurant AS r ON r.restaurant_id = o.restaurant_id "
-                "WHERE o.order_id = %s AND r.user_id = %s FOR UPDATE",
-                (order_id, session["user_id"]),
+                "SELECT status, restaurant_id FROM `order` "
+                "WHERE order_id = %s FOR UPDATE",
+                (order_id,),
             )
             row = cursor.fetchone()
             if row is None:
+                raise APIError(HTTPStatus.NOT_FOUND, "Order not found for this restaurant")
+            restaurant = self.query_one(
+                "SELECT restaurant_id FROM restaurant WHERE restaurant_id = %s AND user_id = %s",
+                (row["restaurant_id"], session["user_id"]),
+            )
+            if restaurant is None:
                 raise APIError(HTTPStatus.NOT_FOUND, "Order not found for this restaurant")
             if row["status"] != old_status:
                 raise APIError(HTTPStatus.CONFLICT, "Order must be " + old_status + " before this action")
@@ -220,6 +236,7 @@ class OrderRoutes:
         self.send_json(HTTPStatus.OK, {"message": "Order status updated", "order": order})
 
     def driver_accept_order(self, session, order_id):
+        """Tài xế trực tuyến tự nhận một đơn đang chờ giao."""
         if session["role"] != "Driver":
             raise APIError(HTTPStatus.FORBIDDEN, "Only driver accounts can accept orders")
         connection = connect(session["role"])
@@ -271,6 +288,7 @@ class OrderRoutes:
         })
 
     def driver_complete_order(self, session, order_id):
+        """Tài xế được phân công lần lượt hoàn tất các bước giao hàng."""
         if session["role"] != "Driver":
             raise APIError(HTTPStatus.FORBIDDEN, "Only driver accounts can complete deliveries")
         connection = connect(session["role"])

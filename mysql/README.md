@@ -1,75 +1,102 @@
-# MySQL scripts
+# Các tệp MySQL
 
-Run the scripts against a fresh MySQL 8.0.16+ database in this order.
-The performance benchmarks require MySQL 8.0.18+:
+Các script được viết cho MySQL 8.0.16 trở lên. Benchmark dùng `EXPLAIN ANALYZE`
+nên yêu cầu MySQL 8.0.18 trở lên.
+
+## Cài mới với fixture nhỏ
+
+Chạy các file theo thứ tự:
 
 1. `schemasql.sql`
 2. `indexes/indexes.sql`
 3. `triggers/triggers.sql`
 4. `views/views.sql`
-5. `seed/sample_data.sql` (optional; demo data, run once)
-6. Run any individual script in `queries/` or `performance/benchmarks.sql`
-7. `tests/00_helpers.sql`, then each `tests/0*.sql` file in numeric order
-   (requires the demo data; each test file rolls back its own test data)
-8. `security/roles.sql` (requires the views and an account allowed to manage roles)
+5. `seed/sample_data.sql` (tùy chọn, chỉ nạp một lần)
+6. Chạy từng file cần thiết trong `queries/`; chạy toàn bộ
+   `performance/benchmarks.sql` một lần để thực thi cả chín benchmark
+7. Chạy `tests/negative_test_execution.sql` (chỉ dành cho fixture nhỏ, cần tài
+   khoản quản trị DB; các thay đổi kiểm thử được rollback)
+8. `security/roles.sql` (cần có views và tài khoản được phép quản lý role)
 
-For the API, create four dedicated MySQL accounts after installing these roles.
-Grant each account only its matching `role_customer`, `role_restaurant`,
-`role_driver`, or `role_admin` role, then configure the matching credentials in
-`api/.env`. The API activates the role for every connection. Do not use MySQL
-`root` for the API because its direct privileges bypass role restrictions.
-Re-run `security/roles.sql` after updating it so the added API permissions are
-applied to existing roles.
+## Cài mới với bộ dữ liệu 5.000
 
-For the full 5,000-user dataset, use `food_delivery_complete_5000_mysql.sql`
-instead of `seed/sample_data.sql`. Run it immediately after `schemasql.sql`,
-before installing triggers, because it imports historical orders and audit
-records directly. Then continue with the indexes, triggers, views, and security
-scripts above. Do not load both seed files into the same database.
-If MySQL reports error 1644, `trg_order_before_insert` was installed before the
-full seed: its rule correctly rejects historical orders that are not new,
-unassigned `PENDING` orders. Do not disable or weaken the trigger to load the
-fixture. Roll back the failed import transaction and load the full dataset into
-a fresh, empty database in the order above. Do not rerun the seed on top of
-partially imported or existing sample data.
+Dùng `food_delivery_complete_5000_mysql.sql` thay cho `seed/sample_data.sql`:
 
-If the failed import is still open in the same MySQL connection, run:
+1. `schemasql.sql`
+2. `food_delivery_complete_5000_mysql.sql`
+3. `indexes/indexes.sql`
+4. `triggers/triggers.sql`
+5. `views/views.sql`
+6. `security/roles.sql`
 
-```sql
-ROLLBACK;
-```
+Full seed phải chạy ngay sau schema và **trước khi cài triggers**, vì seed nạp
+đơn hàng và audit lịch sử. Không nạp cả hai bộ seed vào cùng database và không
+chạy `tests/negative_test_execution.sql` trên bộ dữ liệu 5.000. Nếu seed lỗi,
+không chạy lại trên database đã nạp dở hoặc có dữ liệu; rollback giao dịch lỗi
+và bắt đầu trên database rỗng.
 
-This undoes the inserts made by that seed transaction; it does not remove
-pre-existing rows or triggers.
-The numbered integrity tests are written for the small `seed/sample_data.sql`
-fixture and should not be run against the full dataset.
-The full dataset has 5,086 users with random six-character plaintext demo
-passwords, a designated group of 20 customers without orders, 10 idle drivers,
-5 restaurants awaiting approval, 20 approved but closed restaurants, and
-unavailable menu items. These passwords are only for coursework/demo data.
+Các cập nhật trong full seed tương thích MySQL Workbench Safe Update Mode. Nếu
+gặp lỗi 1644, có thể trigger `trg_order_before_insert` đã được cài trước khi
+nạp seed; trigger đang bảo vệ quy tắc đơn mới phải bắt đầu ở trạng thái
+`PENDING` và chưa gán tài xế. Không tắt hoặc nới trigger để nạp seed.
 
-`schemasql.sql` creates and selects `food_delivery_db`. Index scripts are intended
-to run once after the schema. The `idx_order_item_order` index is declared with
-the `order_item` foreign key in the schema so MySQL does not create a duplicate
-index automatically. Demo accounts use a deliberately invalid password hash
-placeholder; replace it with an application-generated bcrypt hash before
-testing authentication.
+## Nâng cấp database cũ
 
-Before creating an order, set `@app_user_id` to the authenticated customer's
-`user_id`; the trigger verifies that the customer owns the new order. Set the
-same session variable to the authenticated staff member before status changes
-or driver assignments so audit rows record the actor. The seed demonstrates
-customer, restaurant, and driver actors through a completed order lifecycle.
+Chỉ với database đã tồn tại từ schema cũ, chạy các migration theo thứ tự:
 
-The files in `queries/` are standalone query groups. The integrity-test helper
-procedure must be installed once per database before running the numbered test
-files; each test file is intended to run in its own MySQL session.
+1. `migrations/001_add_restaurant_name.sql`
+2. `migrations/002_order_notifications_and_metrics.sql`
+3. `migrations/003_remove_promotion_notification_type.sql`
 
-The report's cart and coupon modules remain out of scope, as described in its
-future-enhancements section. Role grants include the report's customer order,
-item, and payment inserts, restaurant order-status/driver-assignment updates,
-and driver availability/order-status/assignment updates.
-Database grants are table-level; the application must still enforce row
-ownership for customer, restaurant, and driver reads and updates. The reporting
-order-summary view includes customer names and should be granted only to
-authorized reporting users.
+Sau đó chạy lại `triggers/triggers.sql`, `views/views.sql` và
+`security/roles.sql`. Migration 002 liên kết notification ORDER cũ với đơn,
+xóa notification không có đơn và đồng bộ counters. Do đơn lịch sử không lưu
+thời điểm hoàn tất, migration dùng `order_date` làm mốc ước lượng cho thống kê
+ca. Migration 003 xóa notification PROMOTION cũ và giới hạn loại thông báo
+thành ORDER hoặc SYSTEM. Database tạo mới đã có các thay đổi này trong schema;
+không chạy migration trên database mới.
+
+## Tài khoản và phân quyền cho API
+
+Chạy `security/roles.sql` bằng tài khoản MySQL được phép quản lý role. Script
+tạo/cập nhật quyền cho các role ứng dụng và thu hồi quyền cũ trước khi áp dụng
+bộ quyền mới. Tạo bốn tài khoản MySQL riêng cho
+`role_customer`, `role_restaurant`, `role_driver` và `role_admin`, rồi cấu hình
+chúng trong `api/.env`. Host của tài khoản phải khớp với `MYSQL_HOST`. Không
+dùng MySQL `root` để chạy API; role `role_admin` chỉ phục vụ dashboard, không
+phải tài khoản quản trị database.
+
+## Ghi chú cấu trúc và nghiệp vụ
+
+- `schemasql.sql` tạo và chọn database `food_delivery_db`.
+- `indexes/indexes.sql` tạo chín chỉ mục bổ sung; chỉ chạy một lần sau schema.
+  Hai chỉ mục `idx_order_item_order` và `idx_notification_order` nằm trực tiếp
+  trong schema cùng khóa ngoại tương ứng.
+- `performance/benchmarks.sql` có một câu `EXPLAIN ANALYZE` cho mỗi chỉ mục
+  trong `indexes/indexes.sql`; có thể chạy toàn bộ file thành một batch sau khi
+  cài index và nạp dữ liệu đại diện.
+- Loại notification chỉ gồm `ORDER` và `SYSTEM`; giảm giá/khuyến mãi không nằm
+  trong phạm vi ứng dụng. Bộ dữ liệu 5.000 chỉ nạp notification ORDER.
+- Khi tạo đơn, trigger tăng `customer.total_orders`; điểm loyalty chỉ cộng khi
+  đơn chuyển sang `COMPLETED`. Nếu tài xế hoàn tất đơn trong ca đang hoạt động,
+  trigger tăng `shift.completed_orders` và `shift.bonus_earned`.
+- Bộ seed nhỏ dùng mật khẩu demo `demo123` cho năm tài khoản vì API coursework
+  hiện so sánh mật khẩu dạng rõ. Đây chỉ là dữ liệu cục bộ phục vụ môn học;
+  ứng dụng thực tế phải hash và xác minh mật khẩu ở tầng ứng dụng.
+- API cart lưu trong phiên chạy và mất khi khởi động lại. Giỏ hàng bền vững và
+  coupon chưa được triển khai.
+- Phần lớn quyền được cấp theo cột. Ứng dụng vẫn phải kiểm tra quyền sở hữu
+  dòng dữ liệu của Khách hàng, Nhà hàng và Tài xế.
+- View `vw_order_summary` chứa tên khách hàng; chỉ cấp cho người dùng được phép
+  xem dữ liệu báo cáo đó.
+
+Trước khi tạo đơn, API đặt `@app_user_id` bằng `user_id` của khách; trigger
+kiểm tra quyền tạo đơn và ghi người thực hiện vào audit. Khi đổi trạng thái
+hoặc phân công tài xế, API đặt biến này bằng tài khoản nhân viên tương ứng.
+`seed/sample_data.sql` là fixture và kịch bản demo đầy đủ, vì vậy phải chạy bằng
+tài khoản quản trị DB thay vì tài khoản role giới hạn của API. Biến
+`@app_user_id` mô phỏng actor cho trigger/audit, không tự kích hoạt MySQL role.
+
+Các truy vấn trong `queries/` là nhóm truy vấn độc lập. Bộ test negative duy
+nhất chỉ chạy với fixture nhỏ sau khi đã cài triggers và dữ liệu mẫu; không
+chạy trên bộ dữ liệu 5.000.

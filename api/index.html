@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="vi">
 <head>
+  <!-- Trang giao diện duy nhất cho bản demo; JavaScript đổi nội dung theo role đăng nhập. -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ef6c3b">
@@ -22,6 +23,7 @@
   </header>
 
   <main>
+    <!-- Màn hình công khai để khách đăng nhập trước khi sử dụng ứng dụng. -->
     <section id="login-view" class="login-layout">
       <div class="login-art">
         <div class="art-orbit orbit-one"></div>
@@ -52,6 +54,7 @@
       </div>
     </section>
 
+    <!-- Các màn hình role được ẩn/hiện bởi static/app.js sau khi tải hồ sơ. -->
     <section id="customer-view" class="page-shell hidden">
       <div class="customer-hero">
         <div>
@@ -64,16 +67,40 @@
         <div class="hero-spark spark-a">✦</div><div class="hero-spark spark-b">✧</div>
       </div>
 
+      <nav class="customer-nav" aria-label="Điều hướng nhanh">
+        <a href="#restaurant-section">Nhà hàng</a>
+        <a href="#cart-section">Giỏ hàng <span id="cart-item-count" class="nav-count">0</span></a>
+        <a href="#customer-orders">Đơn hàng</a>
+      </nav>
+
       <div class="customer-columns">
-        <section class="catalog-section">
+        <section id="restaurant-section" class="catalog-section">
           <div class="section-heading">
             <div><span class="eyebrow">LỰA CHỌN HÔM NAY</span><h2 id="restaurant-list">Nhà hàng nổi bật</h2></div>
             <button id="refresh-restaurants" class="button button-outline" type="button">↻ Làm mới</button>
           </div>
+          <div class="catalog-controls" role="search" aria-label="Tìm nhà hàng">
+            <label class="catalog-search">
+              <span class="visually-hidden">Tìm theo tên nhà hàng hoặc loại ẩm thực</span>
+              <input id="restaurant-search" type="search" placeholder="Tìm nhà hàng hoặc món ăn..." autocomplete="off">
+            </label>
+            <label class="cuisine-select">
+              <span class="visually-hidden">Lọc theo loại ẩm thực</span>
+              <select id="cuisine-filter">
+                <option value="">Tất cả loại ẩm thực</option>
+              </select>
+            </label>
+            <label class="open-filter">
+              <input id="open-only-filter" type="checkbox">
+              <span>Chỉ đang mở</span>
+            </label>
+            <button id="reset-restaurant-filters" class="button button-outline" type="button">Xóa lọc</button>
+          </div>
+          <p id="restaurant-results" class="catalog-results" role="status" aria-live="polite"></p>
           <div id="restaurant-listing" class="restaurant-grid"></div>
         </section>
 
-        <aside class="cart-panel">
+        <aside id="cart-section" class="cart-panel">
           <div class="cart-heading"><span class="cart-icon">🛍️</span><div><h2>Giỏ hàng</h2><p id="cart-subtitle">Món ngon bạn đã chọn</p></div></div>
           <div id="cart-content" class="cart-content"></div>
           <div class="cart-total"><span>Tạm tính</span><strong id="cart-total">0 ₫</strong></div>

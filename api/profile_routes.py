@@ -1,3 +1,5 @@
+"""Route hồ sơ người dùng và trạng thái trực tuyến của tài xế."""
+
 from http import HTTPStatus
 
 from database import connect
@@ -5,7 +7,10 @@ from errors import APIError
 
 
 class ProfileRoutes:
+    """Trả hồ sơ theo role và quản lý trạng thái sẵn sàng nhận đơn."""
+
     def profile(self):
+        """Đọc thông tin hồ sơ phù hợp với role trong phiên đăng nhập."""
         session = self.current_session()
         if session["role"] == "Restaurant":
             sql = (
@@ -27,6 +32,7 @@ class ProfileRoutes:
         self.send_json(HTTPStatus.OK, {"user": profile})
 
     def update_driver_status(self):
+        """Đổi trạng thái tài xế, không cho ngoại tuyến khi còn đơn hoạt động."""
         session = self.current_session("Driver")
         payload = self.read_json()
         status = payload.get("status")

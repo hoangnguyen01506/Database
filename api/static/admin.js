@@ -1,3 +1,4 @@
+// Tải số liệu tổng quan và danh sách đơn cho bảng điều khiển Admin.
 import { byId, escapeHtml, money, request, statCard } from "./shared.js";
 import { renderOrders } from "./orders.js";
 

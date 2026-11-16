@@ -1,3 +1,5 @@
+# Cấu hình thật chứa mật khẩu MySQL, không đưa vào Git.
 .env
+# Bytecode Python tự sinh, không cần khi chạy demo.
 __pycache__/
 *.py[cod]

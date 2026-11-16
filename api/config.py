@@ -1,3 +1,5 @@
+"""Đọc cấu hình API và biến môi trường tùy chọn từ api/.env."""
+
 import os
 from pathlib import Path
 
@@ -7,6 +9,7 @@ MAX_BODY_SIZE = 1024 * 1024
 
 
 def load_local_env():
+    """Nạp KEY=VALUE đơn giản; biến môi trường có sẵn được ưu tiên."""
     env_file = API_DIR / ".env"
     if not env_file.exists():
         return
@@ -22,8 +25,10 @@ load_local_env()
 
 
 def api_host():
+    """Trả địa chỉ bind của máy chủ demo."""
     return os.getenv("API_HOST", "127.0.0.1")
 
 
 def api_port():
+    """Trả cổng HTTP của máy chủ demo."""
     return int(os.getenv("API_PORT", "8000"))

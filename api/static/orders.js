@@ -1,3 +1,4 @@
+// Dùng chung bộ dựng danh sách đơn và nút thao tác theo vai trò.
 import { byId, escapeHtml, money, request, state, statusLabels, toast } from "./shared.js";
 
 export function renderOrders(container, orders, mode, onUpdated) {

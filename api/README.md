@@ -1,81 +1,94 @@
-# Local Food Delivery API
+# API giao món FoodieGo
 
-This small Python API serves the local test page at `http://127.0.0.1:8000`
-and reads/writes the existing MySQL schema. The code is split by responsibility;
-database queries are explicit SQL statements with parameters, without an ORM.
-Each request connects using a dedicated MySQL account for its application role
-and explicitly activates the matching MySQL role.
+API Python này phục vụ giao diện demo tại `http://127.0.0.1:8000` và đọc/ghi
+cơ sở dữ liệu MySQL. Mỗi module phụ trách một phần chức năng; câu truy vấn SQL
+được viết tường minh, có tham số và không dùng ORM. API kết nối MySQL bằng tài
+khoản riêng theo vai trò, sau đó kích hoạt role tương ứng.
 
-| File | Responsibility |
+## Vai trò các tệp
+
+| Tệp | Nhiệm vụ |
 | --- | --- |
-| `main.py` | Starts the local server and opens the browser |
-| `server.py` | HTTP routing and static page serving |
-| `base_handler.py` | JSON requests, sessions, shared database reads, and errors |
-| `profile_routes.py` | Current role profile and driver availability |
-| `database.py` | MySQL connection and query helpers |
-| `auth_routes.py` | Login |
-| `catalog_routes.py` | Restaurants, menu, and cart |
-| `order_routes.py` | Order creation, ownership, assignment, and delivery |
-| `admin_routes.py` | Admin statistics |
-| `sessions.py` | In-memory login sessions |
-| `config.py` | Local `.env` settings and server configuration |
-| `errors.py` | Consistent API error type |
-| `index.html` | FoodieGo role-aware local browser UI |
-| `static/app.css` | Responsive FoodieGo styles |
-| `static/app.js` | UI startup and role-based view selection |
-| `static/shared.js`, `static/orders.js` | Shared API/state/UI helpers and order rendering/actions |
-| `static/customer.js`, `static/restaurant.js` | Customer and restaurant screens |
-| `static/driver.js`, `static/admin.js` | Driver and admin screens |
+| `main.py` | Khởi động máy chủ và tự mở trang demo trong trình duyệt |
+| `server.py` | Định tuyến HTTP và phục vụ trang tĩnh |
+| `base_handler.py` | Xử lý JSON, phiên đăng nhập, truy vấn chung và lỗi |
+| `auth_routes.py` | Đăng nhập và tạo phiên |
+| `profile_routes.py` | Đọc hồ sơ, cập nhật trạng thái tài xế |
+| `catalog_routes.py` | Nhà hàng, thực đơn và giỏ hàng theo phiên |
+| `order_routes.py` | Tạo đơn, kiểm tra quyền xem, xử lý giao hàng |
+| `admin_routes.py` | Truy vấn thống kê chỉ đọc cho Admin |
+| `database.py` | Kết nối MySQL theo role và helper truy vấn |
+| `sessions.py` | Lưu phiên trong bộ nhớ; phiên mất khi API khởi động lại |
+| `config.py` | Đọc cấu hình API và `api/.env` |
+| `errors.py` | Kiểu lỗi API có mã trạng thái HTTP |
+| `index.html` | Khung giao diện cho Khách hàng, Nhà hàng, Tài xế và Admin |
+| `static/app.js` | Điều phối đăng nhập và chuyển màn hình theo role |
+| `static/shared.js`, `static/orders.js` | Gọi API, tiện ích giao diện và hiển thị đơn dùng chung |
+| `static/customer.js` | Màn hình khách: tìm quán, chọn món, giỏ hàng, đơn hàng |
+| `static/restaurant.js` | Màn hình nhà hàng: xử lý đơn và xem thực đơn |
+| `static/driver.js` | Màn hình tài xế: trực tuyến và giao đơn |
+| `static/admin.js` | Màn hình Admin: thống kê và xem đơn |
+| `static/app.css` | Kiểu dáng giao diện cho các màn hình |
+| `requirements.txt` | Khai báo thư viện Python cần cài |
+| `.env.example` | Mẫu biến môi trường; cần sao chép thành `.env` và tự điền cấu hình |
 
-## Setup
+Không có module mã nguồn API nào bị bỏ vì tất cả đều được import hoặc được
+máy chủ sử dụng. Các thư mục `__pycache__` chỉ chứa bytecode Python tự sinh,
+không phải tệp cần để chạy demo. Tệp kiểm thử cấu hình role đã được bỏ khỏi
+thư mục demo vì không được API sử dụng khi chạy.
 
-1. Install MySQL 8 and create the schema with `mysql/schemasql.sql`.
-2. Load one data set:
-   - Full coursework data: `mysql/food_delivery_complete_5000_mysql.sql`
-   - Or the small fixture: indexes, triggers, views, then `mysql/seed/sample_data.sql`
-3. If loading the full dataset, run it directly after the schema and before
-   `mysql/indexes/indexes.sql`, `mysql/triggers/triggers.sql`, and
-   `mysql/views/views.sql`. The full seed imports historical audit records.
-4. Run `mysql/security/roles.sql` after the schema, data, indexes, triggers, and
-   views have been installed.
-5. Create one MySQL account per API role and grant each account only its matching
-   role. Use the same host as `MYSQL_HOST` (the example uses `127.0.0.1`):
+## Cài đặt và chạy demo
+
+1. Cài MySQL 8 và tạo bảng bằng `mysql/schemasql.sql`.
+2. Nạp **một** bộ dữ liệu:
+   - Bộ dữ liệu môn học: `mysql/food_delivery_complete_5000_mysql.sql`.
+   - Hoặc fixture nhỏ: chạy indexes, triggers, views rồi
+     `mysql/seed/sample_data.sql`.
+3. Nếu dùng bộ 5.000, chạy file seed ngay sau schema và trước
+   `mysql/indexes/indexes.sql`, `mysql/triggers/triggers.sql` và
+   `mysql/views/views.sql`. Không nạp cả hai bộ seed vào cùng database.
+4. Chạy `mysql/security/roles.sql` sau khi đã cài schema, dữ liệu, indexes,
+   triggers và views. Nếu cập nhật quyền, chạy lại bằng tài khoản quản trị DB.
+5. Tạo một tài khoản MySQL cho mỗi role ứng dụng và cấp đúng role tương ứng.
+   Host tài khoản phải khớp với `MYSQL_HOST` (mặc định `127.0.0.1`):
 
    ```sql
-   CREATE USER 'food_delivery_customer'@'127.0.0.1' IDENTIFIED BY 'replace-customer-password';
+   CREATE USER 'food_delivery_customer'@'127.0.0.1' IDENTIFIED BY 'thay-mat-khau-customer';
    GRANT 'role_customer' TO 'food_delivery_customer'@'127.0.0.1';
    SET DEFAULT ROLE NONE TO 'food_delivery_customer'@'127.0.0.1';
 
-   CREATE USER 'food_delivery_restaurant'@'127.0.0.1' IDENTIFIED BY 'replace-restaurant-password';
+   CREATE USER 'food_delivery_restaurant'@'127.0.0.1' IDENTIFIED BY 'thay-mat-khau-restaurant';
    GRANT 'role_restaurant' TO 'food_delivery_restaurant'@'127.0.0.1';
    SET DEFAULT ROLE NONE TO 'food_delivery_restaurant'@'127.0.0.1';
 
-   CREATE USER 'food_delivery_driver'@'127.0.0.1' IDENTIFIED BY 'replace-driver-password';
+   CREATE USER 'food_delivery_driver'@'127.0.0.1' IDENTIFIED BY 'thay-mat-khau-driver';
    GRANT 'role_driver' TO 'food_delivery_driver'@'127.0.0.1';
    SET DEFAULT ROLE NONE TO 'food_delivery_driver'@'127.0.0.1';
 
-   CREATE USER 'food_delivery_admin'@'127.0.0.1' IDENTIFIED BY 'replace-admin-password';
+   CREATE USER 'food_delivery_admin'@'127.0.0.1' IDENTIFIED BY 'thay-mat-khau-admin';
    GRANT 'role_admin' TO 'food_delivery_admin'@'127.0.0.1';
    SET DEFAULT ROLE NONE TO 'food_delivery_admin'@'127.0.0.1';
    ```
 
-6. Copy `.env.example` to `api/.env` and set the matching credentials. Do not
-   configure the API with MySQL `root`; direct root privileges bypass the
-   restrictions provided by these roles.
-7. From the repository root, install the connector once:
+   Nếu tài khoản đã tồn tại, không chạy lại `CREATE USER`; dùng
+   `ALTER USER ... IDENTIFIED BY ...` để đổi mật khẩu.
+6. Sao chép `api/.env.example` thành `api/.env`, rồi điền tài khoản và mật
+   khẩu MySQL tương ứng. Chỉ lưu mật khẩu thật trong `.env`; không đưa vào Git.
+7. Tại thư mục gốc dự án, cài connector:
 
    ```powershell
    python -m pip install -r api\requirements.txt
    ```
 
-8. Run `api\main.py` (double-click it or run `python api\main.py`). It starts
-   the API and automatically opens `http://127.0.0.1:8000` in your browser.
-   Keep the terminal window open while testing; press Ctrl+C there to stop it.
+8. Chạy `python api\main.py` hoặc mở `api\main.py`. Giữ cửa sổ terminal mở
+   trong lúc demo; nhấn Ctrl+C tại đó để dừng máy chủ.
 
-The full sample file stores unique random six-character plaintext passwords
-because this is a database coursework fixture. It is not suitable for real user
-accounts. Find credentials for each role in a local MySQL client with this
-explicit query (do not publish the returned passwords):
+Fixture nhỏ sử dụng mật khẩu `demo123` cho năm tài khoản mẫu do API coursework
+hiện so sánh mật khẩu dạng rõ. Bộ dữ liệu 5.000 có mật khẩu demo riêng của từng
+tài khoản; có thể tra cứu cục bộ trong MySQL. Đây chỉ là dữ liệu học tập, không
+dùng cho tài khoản thực tế.
+
+Để tìm tài khoản phù hợp với luồng demo:
 
 ```sql
 SELECT user_id, name, email, password, role
@@ -83,26 +96,15 @@ FROM food_delivery_db.`user`
 WHERE role = 'Customer'
 ORDER BY user_id
 LIMIT 5;
-```
 
-Repeat with `Restaurant`, `Driver`, and `Admin` to get accounts for the complete
-workflow. Choose an ONLINE driver; use a restaurant with `is_open = 1` and an
-available menu item. Unapproved and closed restaurants remain visible in the
-restaurant list with their status, but cannot be ordered from. The list excludes
-unapproved restaurants; query them directly in MySQL if you need to inspect
-approval cases.
-
-Use these explicit SQL queries to find accounts that fit the workflow:
-
-```sql
-SELECT u.user_id, u.email, u.password, r.restaurant_id, r.is_open
+SELECT u.user_id, u.email, r.restaurant_id, r.is_open
 FROM food_delivery_db.restaurant AS r
 JOIN food_delivery_db.`user` AS u ON u.user_id = r.user_id
 WHERE r.is_approved = 1 AND r.is_open = 1
 ORDER BY r.restaurant_id
 LIMIT 10;
 
-SELECT u.user_id, u.email, u.password, d.driver_id, d.status
+SELECT u.user_id, u.email, d.driver_id, d.status
 FROM food_delivery_db.driver AS d
 JOIN food_delivery_db.`user` AS u ON u.user_id = d.user_id
 WHERE d.status = 'ONLINE'
@@ -115,77 +117,43 @@ WHERE d.status = 'ONLINE'
 ORDER BY d.driver_id
 LIMIT 10;
 
-SELECT u.user_id, u.email, u.password
-FROM food_delivery_db.`user` AS u
-WHERE u.role = 'Admin'
-ORDER BY u.user_id
+SELECT user_id, name, email
+FROM food_delivery_db.`user`
+WHERE role = 'Admin'
+ORDER BY user_id
 LIMIT 5;
 ```
 
-If there is no available ONLINE driver in the full seed, choose an unused
-OFFLINE driver and set it online for the local demo with a direct
-`UPDATE driver` statement. The API requires the driver to be ONLINE and to have
-no other active order before accepting one. A driver's `GET /api/orders` also
-lists currently available unassigned orders.
+Chọn nhà hàng đang mở, món còn bán và tài xế đang ONLINE. Nếu không có tài xế
+phù hợp, có thể chọn tài xế OFFLINE chưa có đơn đang hoạt động và cập nhật trạng
+thái bằng MySQL cho mục đích demo.
 
-## API routes and SQL behavior
+## API và quyền truy cập
 
-| Route | Required role | Behavior |
+| Đường dẫn | Vai trò | Chức năng |
 | --- | --- | --- |
-| `GET /api/health` | Public | Checks MySQL connectivity |
-| `POST /api/login` | Public | Matches email/password with a parameterized `SELECT` |
-| `GET /api/profile` | Any signed-in role | Loads the current user's role-specific profile |
-| `GET /api/restaurants` | Public | Reads approved restaurants, including closed ones |
-| `GET /api/restaurants/{id}/menu` | Public | Reads all menu items with availability flags |
-| `POST /api/cart/items` | Customer | Validates restaurant/item availability and adds to session cart |
-| `POST /api/orders` | Customer | Inserts order and order items in one transaction |
-| `POST /api/orders/{id}/confirm` | Restaurant owner | `PENDING` to `CONFIRMED` |
-| `POST /api/orders/{id}/prepare` | Restaurant owner | `CONFIRMED` to `PREPARING` |
-| `POST /api/orders/{id}/ready` | Restaurant owner | `PREPARING` to `READY` |
-| `POST /api/orders/{id}/accept` | Driver | Assigns the driver's ID to an eligible order |
-| `POST /api/orders/{id}/complete` | Assigned driver | Writes `READY` → `PICKED_UP` → `DELIVERING` → `COMPLETED` |
-| `POST /api/driver/status` | Driver | Switches availability between `ONLINE` and `OFFLINE`; an active delivery must be completed first |
-| `GET /api/admin/stats` | Admin | Explicit aggregate SQL for order counts, GMV, and food revenue |
+| `GET /api/health` | Công khai | Kiểm tra API và kết nối MySQL |
+| `POST /api/login` | Công khai | Đăng nhập bằng email và mật khẩu |
+| `GET /api/profile` | Đã đăng nhập | Đọc hồ sơ theo role |
+| `GET /api/restaurants` | Công khai | Đọc nhà hàng đã duyệt |
+| `GET /api/restaurants/{id}/menu` | Công khai | Đọc thực đơn |
+| `POST /api/cart/items` | Khách hàng | Thêm món vào giỏ theo phiên |
+| `POST /api/orders` | Khách hàng | Tạo đơn và chi tiết món trong một giao dịch |
+| `GET /api/orders` | Đã đăng nhập | Liệt kê đơn theo phạm vi role |
+| `POST /api/orders/{id}/confirm` | Chủ nhà hàng | Xác nhận đơn |
+| `POST /api/orders/{id}/prepare` | Chủ nhà hàng | Bắt đầu chuẩn bị |
+| `POST /api/orders/{id}/ready` | Chủ nhà hàng | Đánh dấu món đã sẵn sàng |
+| `POST /api/orders/{id}/accept` | Tài xế | Tự nhận đơn đủ điều kiện |
+| `POST /api/orders/{id}/complete` | Tài xế được phân công | Hoàn tất các bước giao hàng |
+| `POST /api/driver/status` | Tài xế | Bật/tắt trạng thái trực tuyến |
+| `GET /api/admin/stats` | Admin | Đọc thống kê đơn hàng và doanh thu |
 
-The API sets MySQL session variable `@app_user_id` inside the same transaction
-as writes that activate database triggers. The database triggers remain
-responsible for order totals, audit rows, driver availability, and valid state
-transitions. API sessions and shopping carts are in memory and reset when the
-server restarts. `database.py` uses the customer MySQL account for login and
-public catalog reads; after login it selects the dedicated Customer,
-Restaurant, Driver, or Admin account and runs `SET ROLE` for the corresponding
-MySQL role on every connection. Missing accounts or role grants are reported
-explicitly. This is a local coursework demonstrator, not a production
-authentication or deployment setup.
+API đặt `@app_user_id` trong cùng giao dịch với các thao tác kích hoạt trigger.
+Trigger MySQL chịu trách nhiệm tính tổng đơn, ghi audit, trạng thái tài xế và
+kiểm tra chuyển trạng thái. Mỗi yêu cầu kết nối bằng tài khoản MySQL riêng của
+role và chạy `SET ROLE`. Admin API chỉ đọc dashboard; thao tác quản trị DB phải
+dùng tài khoản DBA riêng.
 
-## Nine requested test scenarios
-
-1. Log in using a `Customer` account.
-2. Load restaurants and verify the response comes from MySQL.
-3. Choose an available item and add it to the cart.
-4. Place the order; inspect `order` and `order_item` in MySQL.
-5. Log in as the order's restaurant owner and confirm it.
-6. Start preparing, then mark the order ready.
-7. Log in as an `ONLINE` driver and accept the order.
-8. Complete the delivery; verify the final status is `COMPLETED`.
-9. Log in as `Admin` and load statistics.
-
-Useful verification SQL:
-
-```sql
-SELECT order_id, status, total_amount, delivery_fee, driver_id
-FROM food_delivery_db.`order`
-ORDER BY order_id DESC
-LIMIT 10;
-
-SELECT order_id, old_status, new_status, changed_by, changed_at
-FROM food_delivery_db.audit_log
-ORDER BY log_id DESC
-LIMIT 20;
-
-SELECT COUNT(*) AS total_orders,
-       SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_orders,
-       COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN total_amount ELSE 0 END), 0) AS completed_gmv,
-       COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN total_amount - delivery_fee ELSE 0 END), 0) AS food_revenue
-FROM food_delivery_db.`order`;
-```
+Đây là ứng dụng demo môn học, không phải cấu hình xác thực hoặc triển khai cho
+môi trường thật. Phiên và giỏ hàng lưu trong bộ nhớ, sẽ mất khi khởi động lại
+API; giỏ hàng lưu trữ lâu dài và coupon/khuyến mãi chưa triển khai.

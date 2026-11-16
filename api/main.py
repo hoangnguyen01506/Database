@@ -1,3 +1,5 @@
+"""Khởi chạy API demo, chờ máy chủ sẵn sàng rồi mở giao diện trong trình duyệt."""
+
 import threading
 import time
 import urllib.error
@@ -9,6 +11,7 @@ from server import create_server
 
 
 def wait_until_ready(host, port, server_thread):
+    """Kiểm tra máy chủ HTTP đã phản hồi trước khi mở trang demo."""
     url = "http://%s:%s/" % (host, port)
     for _ in range(50):
         if not server_thread.is_alive():
@@ -24,6 +27,7 @@ def wait_until_ready(host, port, server_thread):
 
 
 def main():
+    """Tạo máy chủ nền và dọn dẹp gọn khi người dùng nhấn Ctrl+C."""
     host = api_host()
     port = api_port()
     try:

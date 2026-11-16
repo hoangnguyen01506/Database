@@ -1,7 +1,5 @@
 USE food_delivery_db;
 
-DELIMITER $$
-
 CREATE TRIGGER trg_customer_role_insert
 BEFORE INSERT ON customer
 FOR EACH ROW
@@ -273,6 +271,10 @@ CREATE TRIGGER trg_order_audit_after_insert
 AFTER INSERT ON `order`
 FOR EACH ROW
 BEGIN
+    UPDATE customer
+    SET total_orders = COALESCE(total_orders, 0) + 1
+    WHERE customer_id = NEW.customer_id;
+
     INSERT INTO audit_log (order_id, old_status, new_status, changed_by, changed_at)
     VALUES (NEW.order_id, NULL, NEW.status, @app_user_id, CURRENT_TIMESTAMP);
 END$$
@@ -325,6 +327,23 @@ BEGIN
                 AND active_order.order_id <> NEW.order_id
                 AND active_order.status NOT IN ('COMPLETED', 'CANCELLED')
           );
+    END IF;
+
+    IF NEW.status = 'COMPLETED' AND OLD.status <> 'COMPLETED' THEN
+        UPDATE customer
+        SET loyalty_points = COALESCE(loyalty_points, 0) + 10
+        WHERE customer_id = NEW.customer_id;
+
+        IF NEW.driver_id IS NOT NULL THEN
+            UPDATE shift
+            SET completed_orders = COALESCE(completed_orders, 0) + 1,
+                bonus_earned = COALESCE(bonus_earned, 0.00) + 10.00
+            WHERE driver_id = NEW.driver_id
+              AND start_time <= CURRENT_TIMESTAMP
+              AND (end_time IS NULL OR end_time >= CURRENT_TIMESTAMP)
+            ORDER BY start_time DESC
+            LIMIT 1;
+        END IF;
     END IF;
 END$$
 

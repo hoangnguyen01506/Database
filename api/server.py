@@ -1,3 +1,5 @@
+"""Định tuyến HTTP và phục vụ giao diện tĩnh cho ứng dụng giao món."""
+
 import os
 import re
 from http import HTTPStatus
@@ -24,7 +26,10 @@ class Handler(
     ProfileRoutes,
     BaseHandler,
 ):
+    """Ghép các nhóm route API và ánh xạ URL đến hàm xử lý tương ứng."""
+
     def dispatch(self):
+        """Phân loại yêu cầu theo phương thức HTTP và đường dẫn."""
         path = urlparse(self.path).path.rstrip("/") or "/"
         if self.command == "GET" and path == "/":
             return self.serve_home()
@@ -77,14 +82,17 @@ class Handler(
         raise APIError(HTTPStatus.NOT_FOUND, "API route not found")
 
     def serve_home(self):
+        """Gửi trang HTML chính của bản demo."""
         body = (API_DIR / "index.html").read_bytes()
         self.send_page(body, "text/html; charset=utf-8")
 
     def serve_asset(self, filename, content_type):
+        """Gửi một tệp JavaScript hoặc CSS được phép truy cập."""
         body = (API_DIR / "static" / filename).read_bytes()
         self.send_page(body, content_type)
 
     def send_page(self, body, content_type):
+        """Gửi nội dung tĩnh kèm các header cơ bản."""
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -94,6 +102,7 @@ class Handler(
         self.wfile.write(body)
 
     def health(self):
+        """Kiểm tra kết nối MySQL và trả trạng thái cho trang sức khỏe."""
         try:
             row = self.query_one("SELECT 1 AS database_connected")
         except mysql.connector.Error:
@@ -107,4 +116,5 @@ class Handler(
 
 
 def create_server(host, port):
+    """Tạo máy chủ HTTP đa luồng tại địa chỉ cấu hình."""
     return ThreadingHTTPServer((host, port), Handler)

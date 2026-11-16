@@ -1,3 +1,4 @@
+// Chứa trạng thái giao diện, nhãn dùng chung, gọi API và tiện ích hiển thị.
 export const API = "/api";
 export const roleLabels = {
   Customer: "Khách hàng",

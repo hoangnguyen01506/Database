@@ -1,21 +1,26 @@
+"""Route danh mục: nhà hàng, thực đơn và giỏ hàng theo phiên khách."""
+
 from http import HTTPStatus
 
 from errors import APIError
 
 
 class CatalogRoutes:
+    """Phục vụ nội dung cửa hàng và các thao tác giỏ hàng của khách."""
+
     def list_restaurants(self):
+        """Liệt kê nhà hàng đã được duyệt."""
         rows = self.query_all(
-            "SELECT r.restaurant_id, u.name AS restaurant_name, r.cuisine_type, "
+            "SELECT r.restaurant_id, r.restaurant_name, r.cuisine_type, "
             "r.is_approved, r.is_open, r.min_order_amount "
             "FROM restaurant AS r "
-            "JOIN `user` AS u ON u.user_id = r.user_id "
             "WHERE r.is_approved = 1 "
-            "ORDER BY r.is_open DESC, u.name, r.restaurant_id"
+            "ORDER BY r.is_open DESC, r.restaurant_name, r.restaurant_id"
         )
         self.send_json(HTTPStatus.OK, {"restaurants": rows})
 
     def list_menu(self, restaurant_id):
+        """Lấy thực đơn và trạng thái còn bán của một nhà hàng."""
         rows = self.query_all(
             "SELECT menu_item_id, restaurant_id, name, description, price, category, is_available "
             "FROM menu_item WHERE restaurant_id = %s ORDER BY category, name, menu_item_id",
@@ -24,6 +29,7 @@ class CatalogRoutes:
         self.send_json(HTTPStatus.OK, {"menu": rows})
 
     def get_cart(self):
+        """Đọc giỏ hàng tạm đang lưu trong phiên khách."""
         session = self.current_session("Customer")
         items = []
         if session["cart"]:
@@ -42,6 +48,7 @@ class CatalogRoutes:
         })
 
     def add_cart_item(self):
+        """Kiểm tra rồi thêm món còn bán vào giỏ của một nhà hàng."""
         session = self.current_session("Customer")
         payload = self.read_json()
         try:
@@ -81,6 +88,7 @@ class CatalogRoutes:
         })
 
     def clear_cart(self):
+        """Xóa các món và nhà hàng hiện chọn khỏi giỏ phiên."""
         session = self.current_session("Customer")
         session["cart"].clear()
         session["cart_restaurant_id"] = None

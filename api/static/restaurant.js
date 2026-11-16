@@ -1,3 +1,4 @@
+// Giao diện nhà hàng: bảng đơn cần xử lý, doanh thu và thực đơn.
 import { byId, escapeHtml, money, request, state, statCard } from "./shared.js";
 import { renderOrders } from "./orders.js";
 
@@ -10,7 +11,7 @@ export async function loadRestaurantDashboard() {
       preparation: orders.filter((order) => ["CONFIRMED", "PREPARING"].includes(order.status)).length,
       ready: orders.filter((order) => order.status === "READY").length,
       revenue: orders.filter((order) => order.status === "COMPLETED")
-        .reduce((sum, order) => sum + Number(order.total_amount), 0)
+        .reduce((sum, order) => sum + Number(order.total_amount) - Number(order.delivery_fee || 0), 0)
     };
     byId("restaurant-stats").innerHTML = [
       statCard("Đơn chờ xác nhận", counts.pending, "Cần xử lý", true),

@@ -1,5 +1,6 @@
+// Khởi tạo giao diện, điều phối đăng nhập và mở màn hình theo role.
 import { byId, request, showView, state, toast } from "./shared.js";
-import { checkout, closeMenu, loadCart, loadCustomerHome, loadCustomerOrders, loadRestaurants } from "./customer.js";
+import { checkout, closeMenu, filterRestaurants, loadCart, loadCustomerHome, loadCustomerOrders, loadRestaurants, resetRestaurantFilters } from "./customer.js";
 import { loadRestaurantDashboard, loadRestaurantMenu } from "./restaurant.js";
 import { loadDriverOrders, renderDriverStatus, toggleDriverStatus } from "./driver.js";
 import { loadAdminHome } from "./admin.js";
@@ -66,6 +67,10 @@ async function logout() {
 byId("login-form").addEventListener("submit", login);
 byId("logout-button").addEventListener("click", logout);
 byId("refresh-restaurants").addEventListener("click", loadRestaurants);
+byId("restaurant-search").addEventListener("input", filterRestaurants);
+byId("cuisine-filter").addEventListener("change", filterRestaurants);
+byId("open-only-filter").addEventListener("change", filterRestaurants);
+byId("reset-restaurant-filters").addEventListener("click", resetRestaurantFilters);
 byId("refresh-customer-orders").addEventListener("click", loadCustomerOrders);
 byId("checkout-button").addEventListener("click", checkout);
 byId("close-modal").addEventListener("click", closeMenu);
