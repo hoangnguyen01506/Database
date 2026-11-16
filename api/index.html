@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ef6c3b">
+  <title>FoodieGo — Giao món ngon đến bạn</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="FoodieGo trang chủ">
+      <span class="brand-mark">✦</span>
+      <span>FoodieGo<small>NGON MỖI NGÀY</small></span>
+    </a>
+    <div class="topbar-actions">
+      <span id="header-greeting" class="header-greeting">Giao tận nơi · Nhanh chóng</span>
+      <span id="role-badge" class="role-badge hidden"></span>
+      <button id="logout-button" class="button button-outline hidden" type="button">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="login-view" class="login-layout">
+      <div class="login-art">
+        <div class="art-orbit orbit-one"></div>
+        <div class="art-orbit orbit-two"></div>
+        <span class="food-float food-one">🍜</span>
+        <span class="food-float food-two">🍔</span>
+        <span class="food-float food-three">🍣</span>
+        <span class="food-float food-four">🥗</span>
+        <div class="art-copy">
+          <span class="eyebrow eyebrow-light">DELIVERED WITH LOVE</span>
+          <h1>Món ngon đến,<br><em>niềm vui tới.</em></h1>
+          <p>Khám phá nhà hàng yêu thích và theo dõi đơn hàng trong một nơi.</p>
+        </div>
+        <div class="art-note"><span>✦</span> Tươi ngon mỗi ngày, giao tận cửa</div>
+      </div>
+      <div class="login-side">
+        <form id="login-form" class="login-card">
+          <span class="eyebrow">FOODIEGO MEMBER</span>
+          <h2>Chào mừng trở lại</h2>
+          <p class="muted">Đăng nhập để tiếp tục hành trình món ngon của bạn.</p>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="name@example.com" required>
+          <label for="password">Mật khẩu</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Mật khẩu tài khoản" required>
+          <button class="button button-primary button-wide" type="submit">Đăng nhập <span>→</span></button>
+          <p class="login-footnote">Tài khoản dùng chung cho Khách hàng, Nhà hàng, Tài xế và Admin.</p>
+        </form>
+      </div>
+    </section>
+
+    <section id="customer-view" class="page-shell hidden">
+      <div class="customer-hero">
+        <div>
+          <span class="eyebrow eyebrow-light">MÓN NGON QUANH BẠN</span>
+          <h1 id="customer-title">Hôm nay mình ăn gì?</h1>
+          <p>Chọn nhà hàng yêu thích, món ngon sẽ sớm đến cửa.</p>
+          <a class="hero-link" href="#restaurant-list">Khám phá nhà hàng <span>↓</span></a>
+        </div>
+        <div class="hero-food" aria-hidden="true"><span>🍱</span><i>✦</i></div>
+        <div class="hero-spark spark-a">✦</div><div class="hero-spark spark-b">✧</div>
+      </div>
+
+      <div class="customer-columns">
+        <section class="catalog-section">
+          <div class="section-heading">
+            <div><span class="eyebrow">LỰA CHỌN HÔM NAY</span><h2 id="restaurant-list">Nhà hàng nổi bật</h2></div>
+            <button id="refresh-restaurants" class="button button-outline" type="button">↻ Làm mới</button>
+          </div>
+          <div id="restaurant-listing" class="restaurant-grid"></div>
+        </section>
+
+        <aside class="cart-panel">
+          <div class="cart-heading"><span class="cart-icon">🛍️</span><div><h2>Giỏ hàng</h2><p id="cart-subtitle">Món ngon bạn đã chọn</p></div></div>
+          <div id="cart-content" class="cart-content"></div>
+          <div class="cart-total"><span>Tạm tính</span><strong id="cart-total">0 ₫</strong></div>
+          <button id="checkout-button" class="button button-primary button-wide" type="button">Đặt món ngay <span>→</span></button>
+          <p class="cart-hint">Chỉ chọn món từ một nhà hàng trong mỗi đơn.</p>
+        </aside>
+      </div>
+
+      <section class="orders-section">
+        <div class="section-heading">
+          <div><span class="eyebrow">CẬP NHẬT MỚI NHẤT</span><h2>Đơn hàng của tôi</h2></div>
+          <button id="refresh-customer-orders" class="button button-outline" type="button">↻ Cập nhật</button>
+        </div>
+        <div id="customer-orders" class="order-list"></div>
+      </section>
+    </section>
+
+    <section id="restaurant-view" class="page-shell hidden">
+      <div class="welcome-row">
+        <div><span class="eyebrow">FOODIEGO PARTNER</span><h1>Xin chào, <span data-user-name></span> 👋</h1><p class="muted">Cùng chuẩn bị những món thật ngon cho khách hàng nhé.</p></div>
+        <span class="live-status"><i></i> Đang kết nối MySQL</span>
+      </div>
+      <div id="restaurant-stats" class="stats-grid"></div>
+      <div class="section-heading"><div><span class="eyebrow">VẬN HÀNH NHÀ HÀNG</span><h2>Đơn hàng mới nhất</h2></div><button id="refresh-restaurant" class="button button-outline">↻ Làm mới</button></div>
+      <div id="restaurant-orders" class="order-list"></div>
+      <div class="section-heading menu-heading"><div><span class="eyebrow">THỰC ĐƠN</span><h2>Món ăn của nhà hàng</h2></div></div>
+      <div id="restaurant-menu" class="menu-grid"></div>
+    </section>
+
+    <section id="driver-view" class="page-shell hidden">
+      <div class="welcome-row">
+        <div><span class="eyebrow">FOODIEGO DRIVER</span><h1>Xin chào, <span data-user-name></span> 👋</h1><p class="muted">Nhận đơn phù hợp và giao món ăn an toàn.</p></div>
+        <span id="driver-status" class="driver-status"></span>
+      </div>
+      <div class="driver-control">
+        <div><span class="eyebrow">TRẠNG THÁI HOẠT ĐỘNG</span><h2 id="driver-status-title">Sẵn sàng nhận đơn?</h2><p class="muted">Bật trạng thái trực tuyến để xem đơn đang chờ tài xế.</p></div>
+        <button id="driver-toggle" class="button button-primary" type="button"></button>
+      </div>
+      <div class="section-heading"><div><span class="eyebrow">GIAO HÀNG</span><h2>Đơn đang chờ & đơn của tôi</h2></div><button id="refresh-driver" class="button button-outline">↻ Làm mới</button></div>
+      <div id="driver-orders" class="order-list"></div>
+    </section>
+
+    <section id="admin-view" class="page-shell hidden">
+      <div class="welcome-row">
+        <div><span class="eyebrow">FOODIEGO ADMIN</span><h1>Bảng điều khiển</h1><p class="muted">Tổng quan hoạt động và doanh thu từ cơ sở dữ liệu.</p></div>
+        <button id="refresh-admin" class="button button-outline">↻ Cập nhật thống kê</button>
+      </div>
+      <div id="admin-stats" class="stats-grid admin-stats"></div>
+      <div class="section-heading"><div><span class="eyebrow">TOÀN HỆ THỐNG</span><h2>Đơn hàng gần đây</h2></div></div>
+      <div id="admin-orders" class="order-list"></div>
+    </section>
+  </main>
+
+  <div id="menu-modal" class="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button id="close-modal" class="modal-close" type="button" aria-label="Đóng">×</button>
+      <span class="eyebrow">THỰC ĐƠN HÔM NAY</span>
+      <h2 id="modal-title">Thực đơn</h2>
+      <div id="modal-menu" class="modal-menu"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
