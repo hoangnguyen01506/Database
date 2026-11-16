@@ -1,8 +1,11 @@
-// Giao diện nhà hàng: bảng đơn cần xử lý, doanh thu và thực đơn.
+// MÀN HÌNH NHÀ HÀNG
+// Hiển thị các đơn thuộc nhà hàng đăng nhập, các nút chuyển trạng thái và menu.
 import { byId, escapeHtml, money, request, state, statCard } from "./shared.js";
 import { renderOrders } from "./orders.js";
 
 export async function loadRestaurantDashboard() {
+  // Route /orders tự lọc theo nhà hàng ở backend. Các thẻ thống kê được tính
+  // từ tập đơn tải về; doanh thu món không cộng phí giao hàng.
   try {
     const data = await request("/orders");
     const orders = data.orders;
@@ -26,11 +29,13 @@ export async function loadRestaurantDashboard() {
 }
 
 export async function loadRestaurantMenu() {
+  // restaurant_id lấy từ hồ sơ API, không lấy từ dữ liệu do người dùng tự nhập.
   if (!state.profile.restaurant_id) {
     byId("restaurant-menu").innerHTML = '<div class="empty-state">Tài khoản chưa liên kết hồ sơ nhà hàng.</div>';
     return;
   }
   try {
+    // Menu gồm cả món tạm hết để nhà hàng biết trạng thái bán của từng món.
     const data = await request(`/restaurants/${state.profile.restaurant_id}/menu`);
     if (!data.menu.length) {
       byId("restaurant-menu").innerHTML = '<div class="empty-state">Chưa có món trong thực đơn.</div>';

@@ -1,13 +1,19 @@
-// Giao diện khách: lọc nhà hàng, xem món, quản lý giỏ và đặt/theo dõi đơn.
+// MÀN HÌNH KHÁCH HÀNG
+// Phụ trách tìm nhà hàng, xem menu, thêm món vào giỏ tạm trong phiên,
+// checkout và xem lịch sử đơn. Dữ liệu nghiệp vụ luôn được API/MySQL xác nhận lại.
 import { byId, escapeHtml, money, request, restaurantEmojis, state, toast } from "./shared.js";
 import { renderOrders } from "./orders.js";
 
 export async function loadCustomerHome() {
+  // Tải danh mục trước để tên quán có sẵn khi hiển thị giỏ; giỏ và đơn có thể
+  // được tải đồng thời vì hai request không phụ thuộc nhau.
   await loadRestaurants();
   await Promise.all([loadCart(), loadCustomerOrders()]);
 }
 
 export async function loadRestaurants() {
+  // Lấy danh sách được duyệt từ API, lưu bản gốc vào state để lọc phía trình duyệt
+  // mà không cần gọi database lại mỗi lần gõ từ khóa.
   try {
     const data = await request("/restaurants");
     state.restaurants = data.restaurants;
@@ -18,10 +24,12 @@ export async function loadRestaurants() {
 }
 
 export function filterRestaurants() {
+  // Lọc trên danh sách đã tải; không tạo truy vấn mới khi người dùng nhập.
   renderRestaurants();
 }
 
 export function resetRestaurantFilters() {
+  // Xóa cả ba điều kiện lọc rồi dựng lại danh sách đầy đủ.
   byId("restaurant-search").value = "";
   byId("cuisine-filter").value = "";
   byId("open-only-filter").checked = false;
@@ -29,6 +37,7 @@ export function resetRestaurantFilters() {
 }
 
 function normalizeSearch(value) {
+  // Bỏ dấu tiếng Việt và chuẩn hóa chữ thường để tìm "pho" vẫn khớp "phở".
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -37,6 +46,8 @@ function normalizeSearch(value) {
 }
 
 function renderRestaurants() {
+  // Tạo lại thẻ lọc loại ẩm thực từ dữ liệu hiện có, nhưng cố giữ lựa chọn
+  // trước đó nếu loại ẩm thực vẫn còn trong kết quả API.
   const listing = byId("restaurant-listing");
   const cuisineFilter = byId("cuisine-filter");
   const selectedCuisine = cuisineFilter.value;
@@ -56,6 +67,7 @@ function renderRestaurants() {
   const cuisine = cuisineFilter.value;
   const openOnly = byId("open-only-filter").checked;
   const restaurants = state.restaurants.filter((restaurant) => {
+    // Cả ba điều kiện phải cùng khớp: từ khóa, loại món và trạng thái đang mở.
     const matchesSearch = !search ||
       normalizeSearch(`${restaurant.restaurant_name} ${restaurant.cuisine_type || ""}`).includes(search);
     return matchesSearch &&
@@ -69,6 +81,7 @@ function renderRestaurants() {
   }
 
   listing.innerHTML = restaurants.map((restaurant, index) => {
+    // Nhà hàng đóng vẫn có thể được xem; nút mở menu chỉ bật khi quán được duyệt và đang mở.
     const canOrder = Boolean(restaurant.is_open) && Boolean(restaurant.is_approved);
     return `<article class="restaurant-card">
       <div class="restaurant-art tone-${index % 5}">
@@ -85,11 +98,13 @@ function renderRestaurants() {
     </article>`;
   }).join("");
   listing.querySelectorAll("[data-restaurant-id]").forEach((button) => {
+    // Gắn listener sau khi dựng HTML; ID lấy từ data attribute của đúng thẻ nhà hàng.
     button.addEventListener("click", () => openMenu(Number(button.dataset.restaurantId)));
   });
 }
 
 async function openMenu(restaurantId) {
+  // Hiện modal trước để phản hồi ngay, rồi tải menu theo ID. API vẫn kiểm tra dữ liệu mới nhất.
   const restaurant = state.restaurants.find((item) => Number(item.restaurant_id) === restaurantId);
   if (!restaurant) return;
   byId("modal-title").textContent = restaurant.restaurant_name;
@@ -98,6 +113,7 @@ async function openMenu(restaurantId) {
   byId("menu-modal").setAttribute("aria-hidden", "false");
   try {
     const data = await request(`/restaurants/${restaurantId}/menu`);
+    // Không cho món tạm hết xuất hiện như món có thể đặt.
     const available = data.menu.filter((item) => Boolean(item.is_available));
     if (!available.length) {
       byId("modal-menu").innerHTML = '<div class="empty-state">Nhà hàng hiện chưa có món sẵn sàng.</div>';
@@ -108,6 +124,7 @@ async function openMenu(restaurantId) {
       <button class="button button-primary" type="button" data-item-id="${item.menu_item_id}">+ Thêm</button>
     </article>`).join("");
     byId("modal-menu").querySelectorAll("[data-item-id]").forEach((button) => {
+      // Nút thêm gọi API; backend kiểm tra lại tồn tại, giá và trạng thái món.
       button.addEventListener("click", () => addToCart(Number(button.dataset.itemId)));
     });
   } catch (error) {
@@ -116,11 +133,14 @@ async function openMenu(restaurantId) {
 }
 
 export function closeMenu() {
+  // Đồng bộ trạng thái hiển thị và thuộc tính accessibility của modal.
   byId("menu-modal").classList.remove("show");
   byId("menu-modal").setAttribute("aria-hidden", "true");
 }
 
 async function addToCart(menuItemId) {
+  // Giỏ hàng nằm trong phiên API, không phải MySQL. Mỗi lần thêm món vẫn gửi
+  // request để backend kiểm tra món còn bán và giới hạn một nhà hàng mỗi giỏ.
   try {
     await request("/cart/items", { method: "POST", body: JSON.stringify({ menu_item_id: menuItemId, quantity: 1 }) });
     closeMenu();
@@ -132,6 +152,7 @@ async function addToCart(menuItemId) {
 }
 
 export async function loadCart() {
+  // Lấy nội dung giỏ từ phiên server, sau đó tự tính số lượng và tổng tiền hiển thị.
   try {
     const data = await request("/cart");
     const content = byId("cart-content");
@@ -153,6 +174,8 @@ export async function loadCart() {
 }
 
 export async function checkout() {
+  // API tạo order và order_item trong một transaction. Khi thành công, backend xóa giỏ;
+  // frontend tải lại giỏ/đơn để đồng bộ giao diện với kết quả database.
   try {
     const data = await request("/orders", { method: "POST", body: "{}" });
     closeMenu();
@@ -165,6 +188,7 @@ export async function checkout() {
 }
 
 export async function loadCustomerOrders() {
+  // API chỉ trả những đơn thuộc khách hiện tại; renderOrders dùng chung layout đơn hàng.
   try {
     const data = await request("/orders");
     renderOrders(byId("customer-orders"), data.orders, "customer", async () => {});

@@ -1,12 +1,15 @@
-// Tải số liệu tổng quan và danh sách đơn cho bảng điều khiển Admin.
+// MÀN HÌNH ADMIN
+// Chỉ đọc số liệu tổng quan và đơn hàng; quyền Admin API không quản trị database.
 import { byId, escapeHtml, money, request, statCard } from "./shared.js";
 import { renderOrders } from "./orders.js";
 
 export async function loadAdminHome() {
+  // Hai nội dung độc lập nên tải đồng thời để giảm thời gian chờ.
   await Promise.all([loadAdminStats(), loadAdminOrders()]);
 }
 
 async function loadAdminStats() {
+  // Các số liệu đã được tổng hợp ở SQL/API; frontend chỉ định dạng và trình bày.
   try {
     const data = await request("/admin/stats");
     const stats = data.statistics;
@@ -22,6 +25,7 @@ async function loadAdminStats() {
 }
 
 async function loadAdminOrders() {
+  // Danh sách do API lọc theo role Admin; chế độ "admin" không hiện nút sửa đơn.
   try {
     const data = await request("/orders");
     renderOrders(byId("admin-orders"), data.orders, "admin", async () => {});
