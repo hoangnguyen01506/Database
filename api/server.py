@@ -14,6 +14,7 @@ from base_handler import BaseHandler
 from catalog_routes import CatalogRoutes
 from config import API_DIR
 from errors import APIError
+from notification_routes import NotificationRoutes
 from order_routes import OrderRoutes
 from profile_routes import ProfileRoutes
 
@@ -21,6 +22,7 @@ from profile_routes import ProfileRoutes
 class Handler(
     AuthRoutes,
     CatalogRoutes,
+    NotificationRoutes,
     OrderRoutes,
     AdminRoutes,
     ProfileRoutes,
@@ -44,6 +46,7 @@ class Handler(
             "restaurant.js": "text/javascript; charset=utf-8",
             "driver.js": "text/javascript; charset=utf-8",
             "admin.js": "text/javascript; charset=utf-8",
+            "notifications.js": "text/javascript; charset=utf-8",
         }
         asset_match = re.fullmatch(r"/assets/([a-z]+\.js|app\.css)", path)
         if self.command == "GET" and asset_match and asset_match.group(1) in asset_types:
@@ -54,10 +57,19 @@ class Handler(
             return self.logout()
         if self.command == "GET" and path == "/api/profile":
             return self.profile()
+        if self.command == "GET" and path == "/api/driver/shift":
+            return self.driver_shift()
         if self.command == "POST" and path == "/api/driver/status":
             return self.update_driver_status()
+        if self.command == "GET" and path == "/api/notifications":
+            return self.list_notifications()
+        match = re.fullmatch(r"/api/notifications/(\d+)/read", path)
+        if self.command == "POST" and match:
+            return self.mark_notification_read(int(match.group(1)))
         if self.command == "GET" and path == "/api/restaurants":
             return self.list_restaurants()
+        if self.command == "GET" and path == "/api/restaurant/stats":
+            return self.restaurant_stats()
         match = re.fullmatch(r"/api/restaurants/(\d+)/menu", path)
         if self.command == "GET" and match:
             return self.list_menu(int(match.group(1)))
@@ -71,10 +83,16 @@ class Handler(
             return self.place_order()
         if self.command == "GET" and path == "/api/orders":
             return self.list_orders()
+        match = re.fullmatch(r"/api/orders/(\d+)/reviews", path)
+        if self.command == "POST" and match:
+            return self.add_review(int(match.group(1)))
         match = re.fullmatch(r"/api/orders/(\d+)", path)
         if self.command == "GET" and match:
             return self.get_order(int(match.group(1)))
-        match = re.fullmatch(r"/api/orders/(\d+)/(confirm|prepare|ready|accept|complete)", path)
+        match = re.fullmatch(
+            r"/api/orders/(\d+)/(confirm|prepare|ready|accept|pickup|start-delivery|complete)",
+            path,
+        )
         if self.command == "POST" and match:
             return self.change_order(int(match.group(1)), match.group(2))
         if self.command == "GET" and path == "/api/admin/stats":

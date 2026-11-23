@@ -1,9 +1,11 @@
 """Route đơn hàng: checkout, lọc quyền xem và xử lý giao hàng."""
 
 from http import HTTPStatus
+import secrets
 
 from database import connect
 from errors import APIError
+from notification_service import record_driver_status_change
 
 
 class OrderRoutes:
@@ -14,8 +16,13 @@ class OrderRoutes:
         session = self.current_session("Customer")
         if not session["cart"]:
             raise APIError(HTTPStatus.CONFLICT, "Add at least one available menu item before checkout")
+        payload = self.read_json()
+        payment_method = payload.get("payment_method", "CASH")
+        if payment_method not in ("CASH", "MOMO"):
+            raise APIError(HTTPStatus.BAD_REQUEST, "Choose CASH or MOMO demo payment")
         connection = connect(session["role"])
         cursor = connection.cursor(dictionary=True)
+        payment = None
         try:
             connection.start_transaction()
             cursor.execute("SET @app_user_id = %s", (session["user_id"],))
@@ -52,13 +59,7 @@ class OrderRoutes:
             if cursor.fetchone() is None:
                 raise APIError(HTTPStatus.CONFLICT, "Restaurant stopped accepting orders")
 
-            cursor.execute(
-                "INSERT INTO `order` "
-                "(customer_id, restaurant_id, total_amount, status, delivery_fee, payment_method, delivery_address_snapshot) "
-                "VALUES (%s, %s, 0, 'PENDING', 0, 'CASH', %s)",
-                (customer["customer_id"], restaurant_id, address_snapshot),
-            )
-            order_id = cursor.lastrowid
+            cart_items = []
             for menu_item_id, quantity in session["cart"].items():
                 cursor.execute(
                     "SELECT mi.menu_item_id, mi.is_available, mi.restaurant_id "
@@ -68,10 +69,28 @@ class OrderRoutes:
                 item = cursor.fetchone()
                 if item is None or item["restaurant_id"] != restaurant_id or not item["is_available"]:
                     raise APIError(HTTPStatus.CONFLICT, "A cart item is no longer available")
+                cart_items.append({
+                    "menu_item_id": item["menu_item_id"],
+                    "quantity": quantity,
+                })
+
+            cursor.execute(
+                "INSERT INTO `order` "
+                "(customer_id, restaurant_id, total_amount, status, delivery_fee, payment_method, delivery_address_snapshot) "
+                "VALUES (%s, %s, 0, 'PENDING', 0, %s, %s)",
+                (customer["customer_id"], restaurant_id, payment_method, address_snapshot),
+            )
+            order_id = cursor.lastrowid
+            for item in cart_items:
+                # The BEFORE INSERT trigger replaces these placeholders with the menu snapshot.
                 cursor.execute(
                     "INSERT INTO order_item (order_id, menu_item_id, quantity, price, item_name) "
                     "VALUES (%s, %s, %s, 0, '')",
-                    (order_id, menu_item_id, quantity),
+                    (
+                        order_id,
+                        item["menu_item_id"],
+                        item["quantity"],
+                    ),
                 )
             cursor.execute(
                 "SELECT order_id, status, total_amount, delivery_fee "
@@ -79,6 +98,23 @@ class OrderRoutes:
                 (order_id,),
             )
             created_order = cursor.fetchone()
+            if payment_method == "MOMO":
+                if created_order["total_amount"] <= 0:
+                    raise APIError(HTTPStatus.CONFLICT, "Demo virtual payment requires an order total greater than zero")
+                transaction_id = "DEMO-" + secrets.token_hex(16)
+                cursor.execute(
+                    "INSERT INTO payment "
+                    "(order_id, amount, payment_method, status, provider, "
+                    "provider_transaction_id, transaction_date, paid_at) "
+                    "VALUES (%s, %s, %s, 'SUCCESS', 'FoodieGo Demo Gateway', %s, "
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    (order_id, created_order["total_amount"], payment_method, transaction_id),
+                )
+                payment = {
+                    "status": "SUCCESS",
+                    "payment_method": payment_method,
+                    "provider_transaction_id": transaction_id,
+                }
             connection.commit()
         except Exception:
             connection.rollback()
@@ -88,7 +124,11 @@ class OrderRoutes:
             connection.close()
         session["cart"].clear()
         session["cart_restaurant_id"] = None
-        self.send_json(HTTPStatus.CREATED, {"message": "Order created", "order": created_order})
+        self.send_json(HTTPStatus.CREATED, {
+            "message": "Order created",
+            "order": created_order,
+            "payment": payment,
+        })
 
     def list_orders(self):
         """Liệt kê các đơn mà role hiện tại được phép xem."""
@@ -96,11 +136,16 @@ class OrderRoutes:
         if session["role"] == "Customer":
             sql = (
                 "SELECT o.order_id, o.order_date, o.status, o.total_amount, o.delivery_fee, "
-                "o.restaurant_id, o.driver_id FROM `order` AS o "
+                "o.restaurant_id, o.driver_id, "
+                "EXISTS (SELECT 1 FROM review AS rv WHERE rv.order_id = o.order_id "
+                "AND rv.reviewer_id = %s AND rv.target_type = 'Restaurant') AS restaurant_reviewed, "
+                "EXISTS (SELECT 1 FROM review AS rv WHERE rv.order_id = o.order_id "
+                "AND rv.reviewer_id = %s AND rv.target_type = 'Driver') AS driver_reviewed "
+                "FROM `order` AS o "
                 "JOIN customer AS c ON c.customer_id = o.customer_id "
                 "WHERE c.user_id = %s ORDER BY o.order_date DESC LIMIT 100"
             )
-            params = (session["user_id"],)
+            params = (session["user_id"], session["user_id"], session["user_id"])
         elif session["role"] == "Restaurant":
             sql = (
                 "SELECT o.order_id, o.order_date, o.status, o.total_amount, o.delivery_fee, "
@@ -130,6 +175,81 @@ class OrderRoutes:
             raise APIError(HTTPStatus.FORBIDDEN, "This account role cannot view orders")
         rows = self.query_all(sql, params)
         self.send_json(HTTPStatus.OK, {"orders": rows})
+
+    def restaurant_stats(self):
+        """Tổng hợp toàn bộ đơn của nhà hàng, không phụ thuộc giới hạn danh sách."""
+        session = self.current_session("Restaurant")
+        statistics = self.query_one(
+            "SELECT "
+            "COUNT(CASE WHEN o.status = 'PENDING' THEN 1 END) AS pending, "
+            "COUNT(CASE WHEN o.status IN ('CONFIRMED', 'PREPARING') THEN 1 END) AS preparation, "
+            "COUNT(CASE WHEN o.status = 'READY' THEN 1 END) AS ready, "
+            "COALESCE(SUM(CASE WHEN o.status = 'COMPLETED' "
+            "THEN o.total_amount - o.delivery_fee ELSE 0 END), 0) AS revenue "
+            "FROM restaurant AS r "
+            "LEFT JOIN `order` AS o ON o.restaurant_id = r.restaurant_id "
+            "WHERE r.user_id = %s "
+            "GROUP BY r.restaurant_id",
+            (session["user_id"],),
+        )
+        if statistics is None:
+            raise APIError(HTTPStatus.FORBIDDEN, "This account has no restaurant profile")
+        self.send_json(HTTPStatus.OK, {"statistics": statistics})
+
+    def add_review(self, order_id):
+        """Lưu đánh giá nhà hàng hoặc tài xế cho đơn đã hoàn tất của khách."""
+        session = self.current_session("Customer")
+        payload = self.read_json()
+        target_type = payload.get("target_type")
+        rating = payload.get("rating")
+        comment = payload.get("comment", "")
+        if target_type not in ("Restaurant", "Driver"):
+            raise APIError(HTTPStatus.BAD_REQUEST, "Review target must be Restaurant or Driver")
+        if isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 5:
+            raise APIError(HTTPStatus.BAD_REQUEST, "Rating must be an integer from 1 to 5")
+        if not isinstance(comment, str) or len(comment) > 2000:
+            raise APIError(HTTPStatus.BAD_REQUEST, "Review comment must be text of at most 2,000 characters")
+
+        connection = connect(session["role"])
+        cursor = connection.cursor(dictionary=True)
+        try:
+            connection.start_transaction()
+            cursor.execute(
+                "SELECT o.status, o.driver_id FROM `order` AS o "
+                "JOIN customer AS c ON c.customer_id = o.customer_id "
+                "WHERE o.order_id = %s AND c.user_id = %s FOR UPDATE",
+                (order_id, session["user_id"]),
+            )
+            order = cursor.fetchone()
+            if order is None:
+                raise APIError(HTTPStatus.NOT_FOUND, "Completed order not found for this customer")
+            if order["status"] != "COMPLETED":
+                raise APIError(HTTPStatus.CONFLICT, "Reviews are available after order completion")
+            if target_type == "Driver" and order["driver_id"] is None:
+                raise APIError(HTTPStatus.CONFLICT, "This order has no assigned driver to review")
+            cursor.execute(
+                "INSERT INTO review (order_id, reviewer_id, target_type, rating, comment) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (order_id, session["user_id"], target_type, rating, comment.strip() or None),
+            )
+            review_id = cursor.lastrowid
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            cursor.close()
+            connection.close()
+        self.send_json(HTTPStatus.CREATED, {
+            "message": "Review saved",
+            "review": {
+                "review_id": review_id,
+                "order_id": order_id,
+                "target_type": target_type,
+                "rating": rating,
+                "comment": comment.strip(),
+            },
+        })
 
     def get_order(self, order_id):
         """Lấy chi tiết đơn sau khi kiểm tra quyền sở hữu."""
@@ -183,8 +303,8 @@ class OrderRoutes:
             self.restaurant_order_action(session, order_id, action)
         elif action == "accept":
             self.driver_accept_order(session, order_id)
-        elif action == "complete":
-            self.driver_complete_order(session, order_id)
+        elif action in ("pickup", "start-delivery", "complete"):
+            self.driver_order_action(session, order_id, action)
 
     def restaurant_order_action(self, session, order_id, action):
         """Xác nhận và cập nhật các bước chuẩn bị của nhà hàng."""
@@ -274,6 +394,13 @@ class OrderRoutes:
                 "UPDATE `order` SET driver_id = %s WHERE order_id = %s",
                 (driver["driver_id"], order_id),
             )
+            record_driver_status_change(
+                cursor,
+                driver["driver_id"],
+                session["user_id"],
+                "BUSY",
+                order_id,
+            )
             connection.commit()
         except Exception:
             connection.rollback()
@@ -287,17 +414,23 @@ class OrderRoutes:
             "driver_id": driver["driver_id"],
         })
 
-    def driver_complete_order(self, session, order_id):
-        """Tài xế được phân công lần lượt hoàn tất các bước giao hàng."""
+    def driver_order_action(self, session, order_id, action):
+        """Tài xế chuyển một đơn đúng một bước trong quy trình giao hàng."""
         if session["role"] != "Driver":
-            raise APIError(HTTPStatus.FORBIDDEN, "Only driver accounts can complete deliveries")
+            raise APIError(HTTPStatus.FORBIDDEN, "Only driver accounts can update delivery progress")
+        transitions = {
+            "pickup": ("READY", "PICKED_UP", "Driver picked up the order"),
+            "start-delivery": ("PICKED_UP", "DELIVERING", "Delivery started"),
+            "complete": ("DELIVERING", "COMPLETED", "Delivery completed"),
+        }
+        old_status, new_status, message = transitions[action]
         connection = connect(session["role"])
         cursor = connection.cursor(dictionary=True)
         try:
             connection.start_transaction()
             cursor.execute("SET @app_user_id = %s", (session["user_id"],))
             cursor.execute(
-                "SELECT d.driver_id FROM driver AS d WHERE d.user_id = %s FOR UPDATE",
+                "SELECT d.driver_id, d.status FROM driver AS d WHERE d.user_id = %s FOR UPDATE",
                 (session["user_id"],),
             )
             driver = cursor.fetchone()
@@ -310,21 +443,29 @@ class OrderRoutes:
             order = cursor.fetchone()
             if order is None or order["driver_id"] != driver["driver_id"]:
                 raise APIError(HTTPStatus.NOT_FOUND, "Order not found for this driver")
-            transitions = {
-                "PREPARING": "READY",
-                "READY": "PICKED_UP",
-                "PICKED_UP": "DELIVERING",
-                "DELIVERING": "COMPLETED",
-            }
-            if order["status"] not in transitions:
-                raise APIError(HTTPStatus.CONFLICT, "Order is not in a state that can be delivered")
-            while order["status"] in transitions:
-                next_status = transitions[order["status"]]
-                cursor.execute(
-                    "UPDATE `order` SET status = %s WHERE order_id = %s",
-                    (next_status, order_id),
+            if order["status"] != old_status:
+                raise APIError(
+                    HTTPStatus.CONFLICT,
+                    "Order must be %s before this action" % old_status,
                 )
-                order["status"] = next_status
+            cursor.execute(
+                "UPDATE `order` SET status = %s WHERE order_id = %s",
+                (new_status, order_id),
+            )
+            cursor.execute(
+                "SELECT status FROM driver WHERE driver_id = %s",
+                (driver["driver_id"],),
+            )
+            updated_driver = cursor.fetchone()
+            if updated_driver["status"] != driver["status"]:
+                record_driver_status_change(
+                    cursor,
+                    driver["driver_id"],
+                    session["user_id"],
+                    updated_driver["status"],
+                    order_id,
+                )
+            order["status"] = new_status
             connection.commit()
         except Exception:
             connection.rollback()
@@ -333,6 +474,6 @@ class OrderRoutes:
             cursor.close()
             connection.close()
         self.send_json(HTTPStatus.OK, {
-            "message": "Delivery completed",
+            "message": message,
             "order": {"order_id": order_id, "status": order["status"]},
         })

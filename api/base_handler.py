@@ -108,8 +108,20 @@ class BaseHandler(BaseHTTPRequestHandler):
             print("Database role configuration failed: %s" % exc)
             self.send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
         except MySQLError as exc:
-            if exc.errno == 1644:
+            if exc.errno in (1142, 1143):
+                print("Database role permission denied: code=%s state=%s message=%s" % (
+                    exc.errno, exc.sqlstate, exc.msg
+                ))
+                self.send_error_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "Tài khoản API thiếu quyền MySQL cho thao tác này. Kiểm tra roles.sql và các GRANT bổ sung trong api/README.md.",
+                )
+            elif exc.errno == 1644:
                 self.send_error_json(HTTPStatus.CONFLICT, str(exc.msg))
+            elif exc.errno == 1062:
+                self.send_error_json(HTTPStatus.CONFLICT, "This record already exists")
+            elif exc.errno == 3819:
+                self.send_error_json(HTTPStatus.BAD_REQUEST, "The submitted values violate a database rule")
             else:
                 print("Database request failed: code=%s state=%s" % (exc.errno, exc.sqlstate))
                 self.send_error_json(HTTPStatus.SERVICE_UNAVAILABLE, "Database request failed")

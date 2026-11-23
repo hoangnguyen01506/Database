@@ -4,6 +4,7 @@ class APIError(Exception):
     """Đóng gói trạng thái HTTP và thông điệp hiển thị cho client."""
 
     def __init__(self, status, message):
+        """Lưu mã HTTP và nội dung để BaseHandler tạo phản hồi JSON."""
         super().__init__(message)
         self.status = status
         self.message = message
