@@ -10,6 +10,7 @@
   <script src="/assets/app.js" type="module"></script>
 </head>
 <body>
+  <!-- Thanh tiêu đề dùng chung; badge role và nút đăng xuất chỉ hiện sau đăng nhập. -->
   <header class="topbar">
     <a class="brand" href="/" aria-label="FoodieGo trang chủ">
       <span class="brand-mark">✦</span>
@@ -18,6 +19,9 @@
     <div class="topbar-actions">
       <span id="header-greeting" class="header-greeting">Giao tận nơi · Nhanh chóng</span>
       <span id="role-badge" class="role-badge hidden"></span>
+      <button id="notifications-button" class="button button-outline hidden" type="button" aria-label="Mở thông báo" aria-controls="notifications-modal" aria-expanded="false">
+        Thông báo <span id="notification-count" class="nav-count hidden">0</span>
+      </button>
       <button id="logout-button" class="button button-outline hidden" type="button">Đăng xuất</button>
     </div>
   </header>
@@ -67,57 +71,68 @@
         <div class="hero-spark spark-a">✦</div><div class="hero-spark spark-b">✧</div>
       </div>
 
-      <nav class="customer-nav" aria-label="Điều hướng nhanh">
-        <a href="#restaurant-section">Nhà hàng</a>
-        <a href="#cart-section">Giỏ hàng <span id="cart-item-count" class="nav-count">0</span></a>
-        <a href="#customer-orders">Đơn hàng</a>
+      <nav class="customer-nav" aria-label="Điều hướng khách hàng">
+        <button class="customer-tab" type="button" data-customer-tab="shop" aria-pressed="true">Đặt món</button>
+        <button class="customer-tab" type="button" data-customer-tab="orders" aria-pressed="false">Đơn hàng</button>
+        <button class="customer-tab customer-cart-tab" type="button" data-customer-tab="shop" data-scroll-to="cart-section" aria-pressed="false">
+          Giỏ hàng <span id="cart-item-count" class="nav-count">0</span>
+        </button>
       </nav>
 
-      <div class="customer-columns">
-        <section id="restaurant-section" class="catalog-section">
-          <div class="section-heading">
-            <div><span class="eyebrow">LỰA CHỌN HÔM NAY</span><h2 id="restaurant-list">Nhà hàng nổi bật</h2></div>
-            <button id="refresh-restaurants" class="button button-outline" type="button">↻ Làm mới</button>
-          </div>
-          <div class="catalog-controls" role="search" aria-label="Tìm nhà hàng">
-            <label class="catalog-search">
-              <span class="visually-hidden">Tìm theo tên nhà hàng hoặc loại ẩm thực</span>
-              <input id="restaurant-search" type="search" placeholder="Tìm nhà hàng hoặc món ăn..." autocomplete="off">
-            </label>
-            <label class="cuisine-select">
-              <span class="visually-hidden">Lọc theo loại ẩm thực</span>
-              <select id="cuisine-filter">
-                <option value="">Tất cả loại ẩm thực</option>
-              </select>
-            </label>
-            <label class="open-filter">
-              <input id="open-only-filter" type="checkbox">
-              <span>Chỉ đang mở</span>
-            </label>
-            <button id="reset-restaurant-filters" class="button button-outline" type="button">Xóa lọc</button>
-          </div>
-          <p id="restaurant-results" class="catalog-results" role="status" aria-live="polite"></p>
-          <div id="restaurant-listing" class="restaurant-grid"></div>
-        </section>
+      <div id="customer-shop-panel" class="customer-panel">
+        <div class="customer-columns">
+          <section id="restaurant-section" class="catalog-section">
+            <!-- Bộ lọc chỉ xử lý danh sách đã tải; API vẫn quyết định dữ liệu nào được phép trả về. -->
+            <div class="section-heading">
+              <div><span class="eyebrow">LỰA CHỌN HÔM NAY</span><h2 id="restaurant-list">Nhà hàng nổi bật</h2></div>
+              <button id="refresh-restaurants" class="button button-outline" type="button">↻ Làm mới</button>
+            </div>
+            <div class="catalog-controls" role="search" aria-label="Tìm nhà hàng">
+              <label class="catalog-search">
+                <span class="visually-hidden">Tìm theo tên nhà hàng hoặc loại ẩm thực</span>
+                <input id="restaurant-search" type="search" placeholder="Tìm nhà hàng hoặc món ăn..." autocomplete="off">
+              </label>
+              <label class="cuisine-select">
+                <span class="visually-hidden">Lọc theo loại ẩm thực</span>
+                <select id="cuisine-filter">
+                  <option value="">Tất cả loại ẩm thực</option>
+                </select>
+              </label>
+              <label class="open-filter">
+                <input id="open-only-filter" type="checkbox">
+                <span>Chỉ đang mở</span>
+              </label>
+              <button id="reset-restaurant-filters" class="button button-outline" type="button">Xóa lọc</button>
+            </div>
+            <p id="restaurant-results" class="catalog-results" role="status" aria-live="polite"></p>
+            <div id="restaurant-listing" class="restaurant-grid"></div>
+          </section>
 
-        <aside id="cart-section" class="cart-panel">
-          <div class="cart-heading"><span class="cart-icon">🛍️</span><div><h2>Giỏ hàng</h2><p id="cart-subtitle">Món ngon bạn đã chọn</p></div></div>
-          <div id="cart-content" class="cart-content"></div>
-          <div class="cart-total"><span>Tạm tính</span><strong id="cart-total">0 ₫</strong></div>
-          <button id="checkout-button" class="button button-primary button-wide" type="button">Đặt món ngay <span>→</span></button>
-          <p class="cart-hint">Chỉ chọn món từ một nhà hàng trong mỗi đơn.</p>
-        </aside>
+          <!-- Giỏ hàng được giữ trong phiên API, không lưu bền vững trong MySQL. -->
+          <aside id="cart-section" class="cart-panel">
+            <div class="cart-heading"><span class="cart-icon">🛍️</span><div><h2>Giỏ hàng</h2><p id="cart-subtitle">Món ngon bạn đã chọn</p></div></div>
+            <div id="cart-content" class="cart-content"></div>
+            <div class="cart-total"><span>Tạm tính</span><strong id="cart-total">0 ₫</strong></div>
+            <div class="checkout-actions">
+              <button id="checkout-button" class="button button-primary button-wide" type="button">Đặt món, trả tiền mặt</button>
+              <button id="virtual-payment-button" class="button button-outline button-wide" type="button">Thanh toán ảo MoMo (demo)</button>
+            </div>
+            <p class="cart-hint">Chỉ chọn món từ một nhà hàng trong mỗi đơn.</p>
+          </aside>
+        </div>
       </div>
 
-      <section class="orders-section">
+      <!-- Khách xem các đơn thuộc tài khoản đang đăng nhập. -->
+      <section id="customer-orders-panel" class="orders-section customer-panel hidden">
         <div class="section-heading">
           <div><span class="eyebrow">CẬP NHẬT MỚI NHẤT</span><h2>Đơn hàng của tôi</h2></div>
           <button id="refresh-customer-orders" class="button button-outline" type="button">↻ Cập nhật</button>
         </div>
-        <div id="customer-orders" class="order-list"></div>
+        <div id="customer-orders" class="order-list"><div class="empty-state">Mở tab Đơn hàng để tải lịch sử đơn của bạn.</div></div>
       </section>
     </section>
 
+    <!-- Màn hình nhà hàng: số liệu, đơn cần xử lý và thực đơn của nhà hàng đó. -->
     <section id="restaurant-view" class="page-shell hidden">
       <div class="welcome-row">
         <div><span class="eyebrow">FOODIEGO PARTNER</span><h1>Xin chào, <span data-user-name></span> 👋</h1><p class="muted">Cùng chuẩn bị những món thật ngon cho khách hàng nhé.</p></div>
@@ -130,6 +145,7 @@
       <div id="restaurant-menu" class="menu-grid"></div>
     </section>
 
+    <!-- Màn hình tài xế: trạng thái trực tuyến và các đơn có thể nhận/đang giao. -->
     <section id="driver-view" class="page-shell hidden">
       <div class="welcome-row">
         <div><span class="eyebrow">FOODIEGO DRIVER</span><h1>Xin chào, <span data-user-name></span> 👋</h1><p class="muted">Nhận đơn phù hợp và giao món ăn an toàn.</p></div>
@@ -139,10 +155,20 @@
         <div><span class="eyebrow">TRẠNG THÁI HOẠT ĐỘNG</span><h2 id="driver-status-title">Sẵn sàng nhận đơn?</h2><p class="muted">Bật trạng thái trực tuyến để xem đơn đang chờ tài xế.</p></div>
         <button id="driver-toggle" class="button button-primary" type="button"></button>
       </div>
+      <section class="driver-shift" aria-labelledby="driver-shift-title">
+        <div class="section-heading">
+          <div><span class="eyebrow">CA LÀM VIỆC</span><h2 id="driver-shift-title">Ca gần nhất</h2></div>
+          <span id="driver-shift-status" class="shift-status">Đang tải...</span>
+        </div>
+        <div id="driver-shift-details" class="shift-details">
+          <div class="empty-state">Đang tải thông tin ca làm việc...</div>
+        </div>
+      </section>
       <div class="section-heading"><div><span class="eyebrow">GIAO HÀNG</span><h2>Đơn đang chờ & đơn của tôi</h2></div><button id="refresh-driver" class="button button-outline">↻ Làm mới</button></div>
       <div id="driver-orders" class="order-list"></div>
     </section>
 
+    <!-- Admin chỉ xem thống kê và đơn hàng; không có thao tác quản trị database ở đây. -->
     <section id="admin-view" class="page-shell hidden">
       <div class="welcome-row">
         <div><span class="eyebrow">FOODIEGO ADMIN</span><h1>Bảng điều khiển</h1><p class="muted">Tổng quan hoạt động và doanh thu từ cơ sở dữ liệu.</p></div>
@@ -154,6 +180,7 @@
     </section>
   </main>
 
+  <!-- Modal được customer.js mở khi chọn quán; nội dung menu được tải từ API. -->
   <div id="menu-modal" class="modal" aria-hidden="true">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <button id="close-modal" class="modal-close" type="button" aria-label="Đóng">×</button>
@@ -162,6 +189,15 @@
       <div id="modal-menu" class="modal-menu"></div>
     </div>
   </div>
+  <div id="notifications-modal" class="notification-popover" aria-hidden="true">
+    <section class="notification-popover-card" role="dialog" aria-modal="false" aria-labelledby="notifications-title">
+      <button id="close-notifications" class="modal-close" type="button" aria-label="Đóng thông báo">×</button>
+      <span class="eyebrow">CẬP NHẬT TÀI KHOẢN</span>
+      <h2 id="notifications-title">Thông báo</h2>
+      <div id="notifications-list" class="notification-list"></div>
+    </section>
+  </div>
+  <!-- Vùng thông báo dùng chung cho kết quả thao tác và lỗi từ API. -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

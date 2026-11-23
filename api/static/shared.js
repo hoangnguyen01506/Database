@@ -75,6 +75,10 @@ export function showView(name) {
     byId(`${view}-view`).classList.toggle("hidden", view !== name);
   });
   byId("logout-button").classList.toggle("hidden", name === "login");
+  byId("notifications-button").classList.toggle(
+    "hidden",
+    !["customer", "restaurant", "driver"].includes(name)
+  );
   byId("role-badge").classList.toggle("hidden", name === "login");
   byId("header-greeting").classList.toggle("hidden", name !== "login");
   if (name !== "login") byId("role-badge").textContent = roleLabels[state.user.role] || state.user.role;
