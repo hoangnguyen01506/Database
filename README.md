@@ -45,11 +45,12 @@ This project aims to design and develop a **relational database system** for an 
 
 The following resources were used for database design, implementation, and documentation:
 
-1. **Database Schema Documentation:** [Mini-DoorDash Database Design - dbdocs.io](https://dbdocs.io/17-thanh-nhuan/test)
-2. **MySQL Official Documentation:** [https://dev.mysql.com/doc/](https://dev.mysql.com/doc/)
-3. **Database Normalization:** [Database Normalization Explained - Microsoft Learn](https://learn.microsoft.com/en-us/office/troubleshoot/access/database-normalization-description)
-4. **Entity-Relationship Model:** [Entity Relationship Diagrams - Lucidchart](https://www.lucidchart.com/pages/er-diagrams)
-5. **DoorDash Platform:** [https://www.doordash.com/](https://www.doordash.com/)
+1. **MySQL Official Documentation:** [https://dev.mysql.com/doc/](https://dev.mysql.com/doc/)
+2. **Database Normalization:** [Database Normalization Explained - Microsoft Learn](https://learn.microsoft.com/en-us/office/troubleshoot/access/database-normalization-description)
+3. **Entity-Relationship Model:** [Entity Relationship Diagrams - Lucidchart](https://www.lucidchart.com/pages/er-diagrams)
+4. **DoorDash Platform:** [https://www.doordash.com/](https://www.doordash.com/)
+5. **Vietnamese Name Database:** [https://github.com/duyet/vietnamese-namedb](https://github.com/duyet/vietnamese-namedb)
+6. **Vietnam Administrative Zones Database:** [https://github.com/tieudv89/vietnam-zones-db](https://github.com/tieudv89/vietnam-zones-db)
 
 ---
 

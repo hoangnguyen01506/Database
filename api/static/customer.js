@@ -5,10 +5,25 @@ import { byId, escapeHtml, money, request, restaurantEmojis, state, toast } from
 import { renderOrders } from "./orders.js";
 
 export async function loadCustomerHome() {
-  // Tải danh mục trước để tên quán có sẵn khi hiển thị giỏ; giỏ và đơn có thể
-  // được tải đồng thời vì hai request không phụ thuộc nhau.
+  // Tải menu và giỏ ở tab Đặt món; lịch sử chỉ tải khi khách mở tab Đơn hàng.
+  showCustomerTab("shop");
   await loadRestaurants();
-  await Promise.all([loadCart(), loadCustomerOrders()]);
+  await loadCart();
+}
+
+export async function showCustomerTab(tab, scrollTarget = "") {
+  const isOrdersTab = tab === "orders";
+  byId("customer-shop-panel").classList.toggle("hidden", isOrdersTab);
+  byId("customer-orders-panel").classList.toggle("hidden", !isOrdersTab);
+  document.querySelectorAll("[data-customer-tab]").forEach((button) => {
+    const selected = button.dataset.customerTab === tab && !button.dataset.scrollTo;
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  if (isOrdersTab) {
+    await loadCustomerOrders();
+  } else if (scrollTarget) {
+    requestAnimationFrame(() => byId(scrollTarget).scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 }
 
 export async function loadRestaurants() {
@@ -168,30 +183,39 @@ export async function loadCart() {
     byId("cart-item-count").textContent = String(items.reduce((sum, item) => sum + Number(item.quantity), 0));
     byId("cart-total").textContent = money(items.reduce((sum, item) => sum + Number(item.line_total), 0));
     byId("checkout-button").disabled = items.length === 0;
+    byId("virtual-payment-button").disabled = items.length === 0;
   } catch (error) {
     byId("cart-content").innerHTML = `<div class="cart-empty">${escapeHtml(error.message)}</div>`;
+    byId("checkout-button").disabled = true;
+    byId("virtual-payment-button").disabled = true;
   }
 }
 
-export async function checkout() {
+export async function checkout(payment_method = "CASH") {
   // API tạo order và order_item trong một transaction. Khi thành công, backend xóa giỏ;
   // frontend tải lại giỏ/đơn để đồng bộ giao diện với kết quả database.
   try {
-    const data = await request("/orders", { method: "POST", body: "{}" });
+    const data = await request("/orders", {
+      method: "POST",
+      body: JSON.stringify({ payment_method })
+    });
     closeMenu();
-    toast(`Đặt hàng thành công! Mã đơn #${data.order.order_id}.`);
-    await Promise.all([loadCart(), loadCustomerOrders()]);
-    byId("customer-orders").scrollIntoView({ behavior: "smooth", block: "center" });
+    const paymentMessage = data.payment
+      ? " Thanh toán ảo thành công."
+      : " Thanh toán khi nhận hàng.";
+    toast(`Đặt hàng thành công! Mã đơn #${data.order.order_id}.${paymentMessage}`);
+    await Promise.all([loadCart(), showCustomerTab("orders")]);
   } catch (error) {
     toast(error.message, true);
   }
 }
 
 export async function loadCustomerOrders() {
-  // API chỉ trả những đơn thuộc khách hiện tại; renderOrders dùng chung layout đơn hàng.
+  // API chỉ trả đơn của khách hiện tại; tải riêng khi mở tab hoặc bấm cập nhật.
+  byId("customer-orders").innerHTML = '<div class="empty-state">Đang tải đơn hàng...</div>';
   try {
     const data = await request("/orders");
-    renderOrders(byId("customer-orders"), data.orders, "customer", async () => {});
+    renderOrders(byId("customer-orders"), data.orders, "customer", loadCustomerOrders);
   } catch (error) {
     byId("customer-orders").innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
   }

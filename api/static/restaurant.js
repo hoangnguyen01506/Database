@@ -4,24 +4,29 @@ import { byId, escapeHtml, money, request, state, statCard } from "./shared.js";
 import { renderOrders } from "./orders.js";
 
 export async function loadRestaurantDashboard() {
-  // Route /orders tự lọc theo nhà hàng ở backend. Các thẻ thống kê được tính
-  // từ tập đơn tải về; doanh thu món không cộng phí giao hàng.
+  await Promise.all([loadRestaurantStats(), loadRestaurantOrders()]);
+}
+
+async function loadRestaurantStats() {
   try {
-    const data = await request("/orders");
-    const orders = data.orders;
-    const counts = {
-      pending: orders.filter((order) => order.status === "PENDING").length,
-      preparation: orders.filter((order) => ["CONFIRMED", "PREPARING"].includes(order.status)).length,
-      ready: orders.filter((order) => order.status === "READY").length,
-      revenue: orders.filter((order) => order.status === "COMPLETED")
-        .reduce((sum, order) => sum + Number(order.total_amount) - Number(order.delivery_fee || 0), 0)
-    };
+    const data = await request("/restaurant/stats");
+    const counts = data.statistics;
     byId("restaurant-stats").innerHTML = [
       statCard("Đơn chờ xác nhận", counts.pending, "Cần xử lý", true),
       statCard("Đang chuẩn bị", counts.preparation, "Đơn trong bếp"),
       statCard("Sẵn sàng giao", counts.ready, "Chờ tài xế"),
       statCard("Doanh thu hoàn tất", money(counts.revenue), "Từ các đơn hoàn tất")
     ].join("");
+  } catch (error) {
+    byId("restaurant-stats").innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function loadRestaurantOrders() {
+  // Danh sách gần đây vẫn được giới hạn; các chỉ số trên được tổng hợp riêng trong SQL.
+  try {
+    const data = await request("/orders");
+    const orders = data.orders;
     renderOrders(byId("restaurant-orders"), orders, "restaurant", loadRestaurantDashboard);
   } catch (error) {
     byId("restaurant-orders").innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;

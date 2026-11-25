@@ -14,9 +14,15 @@ USE food_delivery_db; -- Chọn database để thực hiện các thao tác ti�
 CREATE TABLE user (
     user_id INT AUTO_INCREMENT PRIMARY KEY, -- Khóa chính, mã người dùng tự động tăng
     name VARCHAR(100) NOT NULL, -- Họ tên người dùng, bắt buộc nhập
+<<<<<<< HEAD:mysql/schemasql.sql
     phone VARCHAR(15) NOT NULL UNIQUE, -- Số điện thoại, bắt buộc và không được trùng lặp
     email VARCHAR(100) NULL UNIQUE, -- Email, có thể NULL nhưng nếu có thì không được trùng
     password VARCHAR(255) NOT NULL, -- Mật khẩu đã mã hóa (hash), bắt buộc nhập
+=======
+    phone VARCHAR(15) NOT NULL, -- Số điện thoại, bắt buộc và không được trùng lặp
+    email VARCHAR(100) NULL, -- Email, có thể NULL nhưng nếu có thì không được trùng
+    password VARCHAR(255) NOT NULL, -- dùng mật khẩu 6 ký tự demo
+>>>>>>> 6575a9b (Final):mysql/schema.sql
     role ENUM('Customer', 'Restaurant', 'Driver', 'Admin') NOT NULL, -- Vai trò tài khoản, chỉ nhận 4 giá trị quy định
     address TEXT NULL, -- Địa chỉ tổng quát của người dùng, không bắt buộc
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP -- Thời điểm tạo tài khoản, mặc định là thời gian hiện tại
@@ -45,7 +51,15 @@ CREATE TABLE restaurant (
     is_open TINYINT(1) NOT NULL DEFAULT 0, -- Trạng thái hoạt động: 0 đóng cửa, 1 đang mở
     min_order_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00, -- Giá trị đơn hàng tối thiểu
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE, -- Liên kết với tài khoản chủ nhà hàng
+<<<<<<< HEAD:mysql/schemasql.sql
     FOREIGN KEY (hub_id) REFERENCES hub(hub_id) -- Liên kết với trung tâm điều phối
+=======
+    CONSTRAINT uq_restaurant_user UNIQUE (user_id), -- Mỗi user chỉ đại diện tối đa 1 nhà hàng
+    FOREIGN KEY (hub_id) REFERENCES hub(hub_id), -- Liên kết với trung tâm điều phối
+    CONSTRAINT chk_restaurant_commission
+    CHECK (commission_rate IS NULL OR commission_rate BETWEEN 0 AND 100), -- Hoa hồng phải trong khoảng 0–100%
+    CONSTRAINT chk_restaurant_min_order CHECK (min_order_amount >= 0) -- Giá trị đơn tối thiểu không được âm
+>>>>>>> 6575a9b (Final):mysql/schema.sql
 );
 
 -- Bảng driver: Subclass, lưu thông tin riêng của tài xế giao hàng
@@ -177,7 +191,13 @@ CREATE TABLE notification (
     message TEXT NOT NULL, -- Nội dung chi tiết thông báo
     is_read TINYINT(1) NOT NULL DEFAULT 0, -- Trạng thái đọc: 0 chưa đọc, 1 đã đọc
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Thời điểm tạo thông báo
+<<<<<<< HEAD:mysql/schemasql.sql
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE -- Liên kết với user, xóa thông báo khi tài khoản bị xóa
+=======
+    FOREIGN KEY (order_id) REFERENCES `order`(order_id) ON DELETE CASCADE, -- Xóa đơn thì xóa thông báo liên quan
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE, -- Liên kết với user, xóa thông báo khi tài khoản bị xóa
+    CONSTRAINT chk_notification_order_ref CHECK (type <> 'ORDER' OR order_id IS NOT NULL) -- Thông báo loại ORDER phải có order_id
+>>>>>>> 6575a9b (Final):mysql/schema.sql
 );
 
 -- Bảng payment: Quản lý giao dịch thanh toán của đơn hàng
