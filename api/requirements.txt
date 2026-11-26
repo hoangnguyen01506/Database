@@ -1,0 +1,2 @@
+# Trình kết nối MySQL dùng bởi các route API.
+mysql-connector-python>=9.0,<10.0
